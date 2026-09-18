@@ -3,7 +3,9 @@ package br.com.cs.sislab.service;
 import br.com.cs.sislab.model.Usuario;
 import br.com.cs.sislab.model.Usuario.Perfil;
 import br.com.cs.sislab.repository.UsuarioRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -53,7 +55,7 @@ public class UsuarioService {
     }
 
     public Usuario atualizarUsuario (Long id, String nome, String email, String rgm, Perfil perfil){
-        Usuario usuario = usuarioRepository.findById(id).orElseThrow(() -> new RuntimeException(USER_NOT_FOUND));
+        Usuario usuario = usuarioRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, USER_NOT_FOUND));
         usuario.setNome(nome);
         usuario.setEmail(email);
         usuario.setRgm(rgm);
@@ -63,7 +65,7 @@ public class UsuarioService {
     }
 
     public void delete (Long id){
-        Usuario usuario = usuarioRepository.findById(id).orElseThrow(() -> new RuntimeException(USER_NOT_FOUND));
+        Usuario usuario = usuarioRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, USER_NOT_FOUND));
         usuarioRepository.delete(usuario);
     }
 }
