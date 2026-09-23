@@ -3,6 +3,7 @@ package br.com.cs.sislab.controller;
 import br.com.cs.sislab.dto.LaboratorioDTO;
 import br.com.cs.sislab.model.Laboratorio;
 import br.com.cs.sislab.service.LaboratorioService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,7 +20,7 @@ public class LaboratorioController {
     }
 
     @PostMapping
-    public ResponseEntity<Laboratorio> criar (@RequestHeader("idUsuario") Long idUsuario,@RequestBody LaboratorioDTO laboratorioDTO){
+    public ResponseEntity<Laboratorio> criar (@RequestHeader("idUsuario") Long idUsuario,@Valid @RequestBody LaboratorioDTO laboratorioDTO){
         var laboratorio = laboratorioService.criar(idUsuario, laboratorioDTO.getNome(), laboratorioDTO.getBloco());
         return ResponseEntity.status(HttpStatus.CREATED).body(laboratorio);
     }
@@ -37,7 +38,7 @@ public class LaboratorioController {
     }
 
     @PutMapping ("/{id}")
-    public ResponseEntity<Laboratorio> atualizar (@RequestHeader("idUsuario") Long idUsuario, @PathVariable Long id, @RequestBody LaboratorioDTO laboratorioDTO){
+    public ResponseEntity<Laboratorio> atualizar (@RequestHeader("idUsuario") Long idUsuario, @PathVariable Long id, @Valid @RequestBody LaboratorioDTO laboratorioDTO){
         var laboratorio = laboratorioService.atualizar(idUsuario, id, laboratorioDTO.getNome(), laboratorioDTO.getBloco());
         return ResponseEntity.status(HttpStatus.OK).body(laboratorio);
     }
