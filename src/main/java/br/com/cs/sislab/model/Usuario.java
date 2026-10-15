@@ -27,8 +27,10 @@ public class Usuario {
 
     @NotBlank 
     private String nome;
-    @Email 
+    @Email
+    @Column(unique = true)
     private String email;
+    @Column(unique = true)
     private String rgm;
 
     public Usuario(String nome, String email, String rgm, Perfil perfil) {
