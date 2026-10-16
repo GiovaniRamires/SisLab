@@ -17,14 +17,17 @@ import java.util.List;
 public class ComputadorService  {
     private final UsuarioService usuarioService;
     private final ComputadorRepository computadorRepository;
+    private final LaboratorioService laboratorioService;
 
-    public ComputadorService(ComputadorRepository computadorRepository, UsuarioService usuarioService){
+    public ComputadorService(LaboratorioService laboratorioService, ComputadorRepository computadorRepository, UsuarioService usuarioService){
         this.computadorRepository = computadorRepository;
         this.usuarioService = usuarioService;
+        this.laboratorioService = laboratorioService;
     }
 
-    public Computador criar (String identificador, Long idUsuario, Computador.StatusComputador status, Laboratorio laboratorio){
+    public Computador criar (Long idLaboratorio, String identificador, Long idUsuario, Computador.StatusComputador status){
         ehAdmin(idUsuario);
+        Laboratorio laboratorio = laboratorioService.buscarPorId(idLaboratorio);
         Computador computador  = new Computador(identificador, status, laboratorio);
         return computadorRepository.save(computador);
     }
