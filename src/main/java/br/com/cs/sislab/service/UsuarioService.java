@@ -65,10 +65,10 @@ public class UsuarioService {
     }
 
     public void validarUnicidade(String email, String rgm, Long idAtual){
-        usuarioRepository.FindByEmail(email).ifPresent(u ->{
+        usuarioRepository.findByEmail(email).ifPresent(u ->{
             if(!u.getId().equals(idAtual)) throw new ResponseStatusException(HttpStatus.CONFLICT, "Email já cadastrado!");
         });
-        usuarioRepository.FindByRgm(rgm).ifPresent(u ->{
+        usuarioRepository.findByRgm(rgm).ifPresent(u ->{
         if(!u.getId().equals(idAtual)) throw new ResponseStatusException(HttpStatus.CONFLICT, "RGM já cadastrado!");
         }
         );
