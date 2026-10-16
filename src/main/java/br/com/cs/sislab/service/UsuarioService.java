@@ -51,7 +51,7 @@ public class UsuarioService {
     }
 
     public Usuario buscarPorId(Long id){
-        return usuarioRepository.findById(id).orElseThrow(() -> new RuntimeException(USER_NOT_FOUND));
+        return usuarioRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, USER_NOT_FOUND));
     }
 
     public Usuario atualizarUsuario (Long id, String nome, String email, String rgm, Perfil perfil){
@@ -62,6 +62,16 @@ public class UsuarioService {
         usuario.setPerfil(perfil);
         usuarioRepository.save(usuario);
         return usuario;
+    }
+
+    public void validarUnicidade(String email, String rgm, Long idAtual){
+        usuarioRepository.FindByEmail(email).ifPresent(u ->{
+            if(!u.getId().equals(idAtual)) throw new ResponseStatusException(HttpStatus.CONFLICT, "Email já cadastrado!");
+        });
+        usuarioRepository.FindByRgm(rgm).ifPresent(u ->{
+        if(!u.getId().equals(idAtual)) throw new ResponseStatusException(HttpStatus.CONFLICT, "RGM já cadastrado!");
+        }
+        );
     }
 
     public void delete (Long id){
