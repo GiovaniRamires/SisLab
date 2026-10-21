@@ -1,4 +1,5 @@
-// Tela de login (fiel ao protótipo) + detecção de servidor/banco vazio.
+// Tela de login (fiel ao protótipo): autenticação via POST /auth/login (Spring Security),
+// aviso de sessão expirada e, em ambiente local, criação de dados de demonstração.
 import { html, render, on, $, formData, showFieldErrors, clearFieldErrors, withLoading } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { navigate } from '../core/router.js';
@@ -6,12 +7,13 @@ import { toast, showError, formModal } from '../core/ui.js';
 import { config } from '../config.js';
 import { ping } from '../core/api.js';
 import { auth } from '../services/auth.js';
-import { usuarios } from '../services/usuarios.js';
-import { seedDemo, DEMO_USERS } from '../services/seed.js';
-import { invalidate } from '../services/cache.js';
+import { seedDemo, DEMO_USERS, DemoJaExiste } from '../services/seed.js';
 import { callout } from '../components/common.js';
 
 export default function login({ root }) {
+  // Aviso de sessão expirada (definido pelo tratamento global de 401); vale por 10 minutos.
+  const expiredAt = Number(sessionStorage.getItem('sislab.expired') || 0);
+  const expired = expiredAt && Date.now() - expiredAt < 10 * 60_000;
   render(root, html`
     <div class="auth">
       <div class="auth-box">
@@ -63,27 +65,31 @@ export default function login({ root }) {
         <div class="row end mt-8"><button class="btn btn-secondary btn-sm" data-action="retry">${icon('refresh')} Tentar novamente</button></div>`);
       return;
     }
-    try {
-      invalidate('usuarios:');
-      const todos = await usuarios.listarTodos();
-      if (!todos.length) {
-        render(statusEl, html`
-          <div class="callout callout-info">
-            ${icon('database')}
-            <div class="grow">
-              <p class="callout-title">Nenhum usuário cadastrado</p>
-              <p class="callout-text">O banco de dados está vazio (H2 em memória). Crie dados de demonstração para explorar o sistema ou cadastre o primeiro usuário.</p>
-              <div class="row wrap mt-12">
-                <button class="btn btn-primary btn-sm" data-action="seed">${icon('sparkles')} Criar dados de demonstração</button>
-                <a class="btn btn-secondary btn-sm" href="#/cadastro">Criar conta</a>
-              </div>
+    if (expired) {
+      render(statusEl, callout({ tone: 'warning', iconName: 'clock', title: 'Sua sessão expirou', text: 'Por segurança, entre novamente para continuar.' }));
+      return;
+    }
+    // Ferramenta de desenvolvimento: só aparece quando a API roda localmente (H2 em memória).
+    if (isLocalApi()) {
+      render(statusEl, html`
+        <div class="callout callout-neutral">
+          ${icon('database')}
+          <div class="grow">
+            <p class="callout-title">Ambiente de desenvolvimento</p>
+            <p class="callout-text">O banco H2 começa vazio a cada reinício do servidor. Crie dados de demonstração para explorar o sistema.</p>
+            <div class="row wrap mt-12">
+              <button class="btn btn-secondary btn-sm" data-action="seed">${icon('sparkles')} Criar dados de demonstração</button>
             </div>
-          </div>`);
-      }
-    } catch { /* ignora */ }
+          </div>
+        </div>`);
+    }
   }
 
-  function showDemoCredentials() {
+  function isLocalApi() {
+    try { return ['localhost', '127.0.0.1', '[::1]'].includes(new URL(config.apiUrl).hostname); } catch { return false; }
+  }
+
+  function showDemoCredentials(title) {
     const row = (u, label) => html`
       <button class="list-row clickable" style="width:100%;padding:10px 12px;border:0;border-bottom:1px solid var(--border);text-align:left" data-fill="${u.email}|${u.rgm}">
         <span><span class="list-title" style="display:block">${label}</span><span class="list-meta mono" style="display:block">${u.email} · RGM ${u.rgm}</span></span>
@@ -93,7 +99,7 @@ export default function login({ root }) {
       <div class="callout callout-success">
         ${icon('checkCircle')}
         <div class="grow">
-          <p class="callout-title">Dados de demonstração criados!</p>
+          <p class="callout-title">${title}</p>
           <p class="callout-text">Clique em um usuário para preencher o login:</p>
           <div class="card mt-8" style="overflow:hidden">
             ${row(DEMO_USERS.docente, 'Docente — Carlos Andrade')}
@@ -115,9 +121,13 @@ export default function login({ root }) {
     await withLoading(btn, async () => {
       try {
         await seedDemo((msg) => { btn.title = msg; });
-        showDemoCredentials();
+        showDemoCredentials('Dados de demonstração criados!');
         toast.success('Usuários, laboratórios, computadores, turmas e reservas foram criados.', { title: 'Demonstração pronta' });
       } catch (err) {
+        if (err instanceof DemoJaExiste) {
+          showDemoCredentials('Os dados de demonstração já existem');
+          return;
+        }
         showError(err, 'Falha ao criar dados de demonstração');
       }
     });
@@ -169,6 +179,7 @@ export default function login({ root }) {
     await withLoading(form.querySelector('button[type=submit]'), async () => {
       try {
         const user = await auth.login(email, rgm, form.remember.checked);
+        sessionStorage.removeItem('sislab.expired');
         toast.success(`Bem-vindo(a), ${user.nome.split(' ')[0]}!`, { title: 'Login realizado' });
         const redirect = sessionStorage.getItem('sislab.redirect');
         sessionStorage.removeItem('sislab.redirect');

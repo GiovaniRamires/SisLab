@@ -16,6 +16,8 @@ Interface web do SisLab feita em **HTML, CSS e JavaScript puros** (ES Modules, s
 3. Acesse **http://localhost:5500**.
 
 > O banco H2 fica em memória e começa vazio a cada reinício. Na tela de login, clique em **"Criar dados de demonstração"** para criar usuários, laboratórios, computadores, turmas e reservas de exemplo.
+>
+> O front depende do login (`/auth/login`) e do Spring Security no backend. Veja a seção [Integração com a API e o Spring Security](#integração-com-a-api-e-o-spring-security).
 
 | Perfil | E-mail | RGM (senha) |
 |---|---|---|
@@ -58,9 +60,28 @@ frontend/
     └── views/            # uma tela por arquivo
 ```
 
-## Integração com a API
+## Integração com a API e o Spring Security
 
-- O usuário logado é enviado no header `idUsuario`, que é o mecanismo de identificação atual do backend.
-- **Login**: usa `POST /auth/login` (PR *feature-login*). Se esse endpoint ainda não existir no servidor, o front valida e-mail + RGM pelas listagens de usuários.
-- **Alocação**: usa `GET/POST /reserva/{id}/alocacoes` (PR *feature/alocacao*). Sem o endpoint, o mapa aparece só para consulta e um aviso é exibido.
-- **Listagem de reservas**: o backend ainda não tem `GET /reserva`. Por isso o front percorre `GET /reserva/{id}` (veja `js/services/reservas.js`). Quando o endpoint de listagem existir, basta trocar a função `listar()`.
+O front foi feito para um backend protegido por **Spring Security**. Os endpoints ficam em `config.auth` (`js/config.js`).
+
+| Aspecto | Como o front se comporta |
+|---|---|
+| Login | `POST /auth/login` com `{ email, rgm }` → `{ id, nome, perfil }` |
+| Sessão | Todas as requisições usam `credentials: 'include'`, então o cookie `JSESSIONID` é enviado |
+| JWT (opcional) | Se o login devolver `token`, `accessToken` ou `jwt`, o front envia `Authorization: Bearer <token>` |
+| CSRF | Se existir o cookie `XSRF-TOKEN` (ex.: `csrf.spa()`), ele é reenviado em `X-XSRF-TOKEN` nos POST/PUT/DELETE |
+| `idUsuario` | Continua sendo enviado em todas as requisições, como os controllers exigem; o `TurmaController` o compara com `Principal.getName()` |
+| 401 | Encerra a sessão local e volta ao login com o aviso "Sua sessão expirou", preservando a rota |
+| 403 | Mostra a mensagem do backend (ex.: "Acesso negado!") |
+| Logout | `POST /auth/logout` (falhas são ignoradas) e limpeza local |
+
+Requisitos para o `SecurityFilterChain`:
+
+- `http.cors(Customizer.withDefaults())`, para reaproveitar o `CorsConfig` (com credenciais) e liberar o preflight `OPTIONS`.
+- Liberar sem autenticação: `POST /auth/login` e `POST /usuario/cadastrar` (usado pela tela de cadastro e pelos dados de demonstração).
+- O `Principal.getName()` precisa ser o **id** do usuário, por causa da validação do `TurmaController`.
+- Para 401/403 em JSON (sem redirecionar para uma página de login), use um `AuthenticationEntryPoint` que devolva o status, como o `HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)`.
+
+**Dados de demonstração:** o botão só aparece quando a API está em `localhost`. Ele cadastra os usuários e depois **faz login com cada um** (admin cria laboratórios e turmas; docentes criam reservas e alocações), respeitando as permissões.
+
+**Listagem de reservas:** o backend ainda não tem `GET /reserva`. Por isso o front percorre `GET /reserva/{id}` (veja `js/services/reservas.js`): 200 = visível, 403 = de outro docente, 404 = fim. Quando o endpoint existir, basta trocar a função `listar()`.

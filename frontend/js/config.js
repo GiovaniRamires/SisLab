@@ -17,4 +17,20 @@ export const config = {
   appName: 'SisLab',
   /** Tempo (ms) que listas carregadas da API ficam em cache em memória. */
   cacheTtl: 30_000,
+
+  /*
+   * Autenticação (Spring Security).
+   * - login:  POST { email, rgm } -> { id, nome, perfil, [token] }
+   *           Se a resposta trouxer um token (token | accessToken | jwt), ele é enviado
+   *           em "Authorization: Bearer"; caso contrário vale o cookie de sessão (JSESSIONID).
+   * - logout: POST, chamado ao sair (falhas são ignoradas).
+   * - csrf:   se o backend usar CookieCsrfTokenRepository (ex.: csrf.spa()), o valor do cookie
+   *           é reenviado no header abaixo nas requisições que alteram dados.
+   */
+  auth: {
+    loginPath: '/auth/login',
+    logoutPath: '/auth/logout',
+    csrfCookie: 'XSRF-TOKEN',
+    csrfHeader: 'X-XSRF-TOKEN',
+  },
 };

@@ -165,7 +165,7 @@ function bind(el) {
   on(el, 'click', '[data-action=logout]', async () => {
     const ok = await confirmDialog({ title: 'Sair do SisLab?', message: 'Você precisará entrar novamente para acessar o sistema.', confirmLabel: 'Sair', iconName: 'logout' });
     if (!ok) return;
-    auth.logout();
+    await auth.logout();
     destroyShell();
     navigate('/login');
   });

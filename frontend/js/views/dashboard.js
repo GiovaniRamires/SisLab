@@ -113,8 +113,7 @@ async function docente(root) {
   // Alunos sem alocação na próxima aula (carregado em segundo plano)
   if (prox) {
     Promise.all([alocacoes.listar(prox.id), turmas.buscar(prox.turmaId)]).then(([aloc, turma]) => {
-      if (!aloc.disponivel) return;
-      const pend = turma.alunos.length - aloc.itens.length;
+      const pend = turma.alunos.length - aloc.length;
       const el = $('[data-pendentes]', root);
       if (el && pend > 0) {
         render(el, html`<a href="#/reservas/${prox.id}" style="text-decoration:none;display:block">${callout({ tone: 'info', title: `${plural(pend, 'aluno sem alocação', 'alunos sem alocação')}`, text: `Turma ${prox.turmaNome} — aula ${fmtRelativeDay(prox.data, { withDate: false }).toLowerCase()}.` })}</a>`);

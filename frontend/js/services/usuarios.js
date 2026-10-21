@@ -14,7 +14,7 @@ const byName = (a, b) => naturalCompare(a.nome, b.nome);
 export const usuarios = {
   /** Lista usuários de um perfil (DOCENTE | DISCENTE | ADMINISTRADOR). */
   listar(perfil) {
-    return cached(`usuarios:${perfil}`, async () => ((await api.get(LIST_PATH[perfil], { auth: false })) || []).sort(byName));
+    return cached(`usuarios:${perfil}`, async () => ((await api.get(LIST_PATH[perfil])) || []).sort(byName));
   },
 
   async listarTodos() {

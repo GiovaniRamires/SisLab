@@ -14,10 +14,10 @@ const sortPcs = (a, b) => naturalCompare(a.identificador, b.identificador);
 
 export const laboratorios = {
   listar() {
-    return cached('labs', async () => ((await api.get('/laboratorio', { auth: false })) || []).sort(sortLabs));
+    return cached('labs', async () => ((await api.get('/laboratorio')) || []).sort(sortLabs));
   },
   buscar(id) {
-    return api.get(`/laboratorio/${id}`, { auth: false });
+    return api.get(`/laboratorio/${id}`);
   },
   async criar({ nome, bloco }) {
     const r = await api.post('/laboratorio', { nome, bloco });
@@ -55,7 +55,7 @@ export function resumoLab(lab, pcs) {
 
 export const computadores = {
   listar() {
-    return cached('pcs', async () => ((await api.get('/computador', { auth: false })) || []).sort(sortPcs));
+    return cached('pcs', async () => ((await api.get('/computador')) || []).sort(sortPcs));
   },
   async porLaboratorio(labId) {
     return (await this.listar()).filter((p) => String(p.laboratorio?.id) === String(labId));

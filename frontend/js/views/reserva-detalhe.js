@@ -13,13 +13,13 @@ import { pageHeader, reservaBadge, callout, labMap, stepper } from '../component
 export default async function reservaDetalhe(ctx) {
   const { root, params, query } = ctx;
   const id = params.id;
-  let reserva, pcs = [], alunos = [], aloc = { disponivel: false, itens: [] };
+  let reserva, pcs = [], alunos = [], aloc = { itens: [] };
   let modo = 'manual';
   let selAluno = null;
   let busy = false;
 
   const isDono = () => session.isDocente && reserva && String(reserva.docenteId) === String(session.user.id);
-  const podeAlocar = () => isDono() && aloc.disponivel && situacao(reserva) !== 'CANCELADA';
+  const podeAlocar = () => isDono() && situacao(reserva) !== 'CANCELADA';
 
   async function load() {
     render(root, html`<div class="page">${loadingBlock('Carregando reserva...')}</div>`);
@@ -33,7 +33,7 @@ export default async function reservaDetalhe(ctx) {
       ]);
       pcs = listaPcs;
       alunos = (turma?.alunos || []).slice().sort((a, b) => naturalCompare(a.nome, b.nome));
-      aloc = al;
+      aloc = { itens: al };
       if (ctx.isCurrent()) paint();
     } catch (err) {
       const msg = err.status === 404 ? { ...err, message: 'Reserva não encontrada.' } : err.status === 403 ? { ...err, message: 'Esta reserva pertence a outro docente.' } : err;
@@ -83,8 +83,7 @@ export default async function reservaDetalhe(ctx) {
           <div><p class="kv-label">Estações disp.</p><p class="kv-value">${livres.length}/${pcs.length}</p></div>
         </div>
 
-        ${!aloc.disponivel ? html`<div class="mt-16">${callout({ tone: 'neutral', iconName: 'info', title: 'Módulo de alocação indisponível no servidor', text: html`O backend em execução ainda não possui o endpoint <code>/reserva/{id}/alocacoes</code> (PR “feature/alocacao”). O mapa abaixo mostra apenas o status das máquinas.` })}</div>`
-          : session.isAdmin ? html`<div class="mt-16">${callout({ tone: 'info', title: 'Visualização administrativa', text: 'Apenas o docente responsável pela reserva pode alocar os alunos.' })}</div>`
+        ${session.isAdmin ? html`<div class="mt-16">${callout({ tone: 'info', title: 'Visualização administrativa', text: 'Apenas o docente responsável pela reserva pode alocar os alunos.' })}</div>`
           : sit === 'ENCERRADA' ? html`<div class="mt-16">${callout({ tone: 'neutral', iconName: 'clock', title: 'Aula já realizada', text: 'Esta reserva já foi encerrada; a alocação é exibida para consulta.' })}</div>` : ''}
 
         <div class="grid grid-main-aside mt-20" style="align-items:start">
@@ -113,7 +112,7 @@ export default async function reservaDetalhe(ctx) {
             <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:14px">
               <p class="text-xs muted">Alocados: ${aloc.itens.length} / ${total}</p>
               <div class="progress mt-8"><span style="width:${pct}%"></span></div>
-              ${pendentes.length > livres.length && aloc.disponivel ? html`<p class="text-xs mt-8" style="color:var(--warning-text-2)">${icon('alert')} Faltam ${pendentes.length - livres.length} estação(ões) ativa(s).</p>` : ''}
+              ${pendentes.length > livres.length ? html`<p class="text-xs mt-8" style="color:var(--warning-text-2)">${icon('alert')} Faltam ${pendentes.length - livres.length} estação(ões) ativa(s).</p>` : ''}
             </div>
           </aside>
         </div>
@@ -126,7 +125,7 @@ export default async function reservaDetalhe(ctx) {
   }
 
   async function refreshAloc() {
-    aloc = await alocacoes.listar(id);
+    aloc = { itens: await alocacoes.listar(id) };
     paint();
   }
 

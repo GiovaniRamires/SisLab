@@ -29,6 +29,7 @@ export const session = {
   /** Inicia a sessão. remember=true mantém após fechar o navegador. */
   login(user, remember = true) {
     current = { id: user.id, nome: user.nome, email: user.email, rgm: user.rgm, perfil: user.perfil };
+    if (user.token) current.token = user.token; // JWT opcional (Authorization: Bearer)
     localStorage.removeItem(KEY);
     sessionStorage.removeItem(KEY);
     (remember ? localStorage : sessionStorage).setItem(KEY, JSON.stringify(current));

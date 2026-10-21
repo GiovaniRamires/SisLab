@@ -86,19 +86,10 @@ export function conflita(r, data, ini, fim) {
   return a < fim && ini < b;
 }
 
-/*
- * Alocação de alunos em máquinas (PR "feature/alocacao").
- * Se o endpoint não existir no backend, `listar` retorna { disponivel: false }.
- */
+/* Alocação de alunos em máquinas: /reserva/{id}/alocacoes (ADM ou docente dono consultam; só o dono aloca). */
 export const alocacoes = {
   async listar(reservaId) {
-    try {
-      const itens = await api.get(`/reserva/${reservaId}/alocacoes`);
-      return { disponivel: true, itens: itens || [] };
-    } catch (err) {
-      if (err instanceof ApiError && (err.status === 404 || err.status === 405)) return { disponivel: false, itens: [] };
-      throw err;
-    }
+    return (await api.get(`/reserva/${reservaId}/alocacoes`)) || [];
   },
   alocar(reservaId, alunoId, maquinaId) {
     return api.post(`/reserva/${reservaId}/alocacoes`, { alunoId: Number(alunoId), maquinaId: Number(maquinaId) });

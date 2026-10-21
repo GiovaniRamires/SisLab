@@ -1,6 +1,8 @@
 // Ponto de entrada: registra as rotas e controla o layout de cada tela.
-import { route, setNotFound, onAfterNavigate, startRouter } from './core/router.js';
+import { route, setNotFound, onAfterNavigate, startRouter, navigate, currentPath } from './core/router.js';
 import { render } from './core/dom.js';
+import { onUnauthorized } from './core/api.js';
+import { auth } from './services/auth.js';
 import { ensureShell, destroyShell } from './components/shell.js';
 
 import landing from './views/landing.js';
@@ -43,6 +45,17 @@ route('/configuracoes', { view: configuracoes, auth: true, title: 'Configuraçõ
 setNotFound(notFound);
 
 const appRoot = document.getElementById('app');
+
+// Spring Security respondeu 401 a uma requisição autenticada: a sessão no servidor expirou
+// (ou o servidor reiniciou). Encerra a sessão local e volta ao login, preservando a rota atual.
+onUnauthorized(() => {
+  const path = currentPath();
+  if (path !== '/login') sessionStorage.setItem('sislab.redirect', path);
+  sessionStorage.setItem('sislab.expired', String(Date.now()));
+  auth.expire();
+  destroyShell();
+  navigate('/login', { replace: true });
+});
 
 // Monta o layout adequado e entrega à view um container novo (ctx.root) a cada navegação.
 onAfterNavigate((r, ctx) => {
