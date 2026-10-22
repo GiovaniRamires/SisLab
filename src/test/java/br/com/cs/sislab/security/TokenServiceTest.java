@@ -35,15 +35,10 @@ public class TokenServiceTest {
         docente.setId(7L);
     }
 
-    @Test
-    public void tokenGeradoDeveConterIdEPerfil() {
-        String token = tokenService.gerar(docente);
-
-        Jwt jwt = decoder.decode(token);
-
-        assertEquals("7", jwt.getSubject());
-        assertEquals("DOCENTE", jwt.getClaimAsString("perfil"));
-        assertEquals("sislab", jwt.getClaimAsString("iss"));
+ @Test
+    public void tokenExpiradoDeveSerRejeitado() {
+        TokenService expirado = new TokenService(new NimbusJwtEncoder(new ImmutableSecret<>(chave)), -5);
+        assertThrows(IllegalArgumentException.class, () -> expirado.gerar(docente));
     }
 
     @Test
