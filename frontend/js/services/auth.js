@@ -1,12 +1,12 @@
-// Autenticação via Spring Security.
-// POST /auth/login { email, rgm } autentica no servidor, que mantém a sessão (cookie JSESSIONID)
-// ou devolve um token (JWT). O front guarda apenas os dados exibidos na interface.
+// Autenticação via Spring Security + JWT.
+// POST /auth/login { email, senha } devolve o token JWT e os dados do usuário.
+// O front guarda o token e os dados exibidos na interface.
 import { api, ApiError } from '../core/api.js';
 import { config } from '../config.js';
 import { session } from '../core/session.js';
 import { invalidate } from './cache.js';
 
-const INVALID = 'E-mail ou RGM inválidos.';
+const INVALID = 'E-mail ou senha inválidos.';
 
 /** Extrai um token da resposta do login, se o backend usar JWT. */
 function extrairToken(res) {
@@ -14,12 +14,12 @@ function extrairToken(res) {
 }
 
 export const auth = {
-  async login(email, rgm, remember = true) {
+  async login(email, senha, remember = true) {
     email = email.trim();
-    rgm = rgm.trim();
+    senha = senha.trim();
     let res;
     try {
-      res = await api.post(config.auth.loginPath, { email, rgm }, { auth: false });
+      res = await api.post(config.auth.loginPath, { email, senha }, { auth: false });
     } catch (err) {
       if (err instanceof ApiError && (err.status === 401 || (err.status === 400 && !err.fieldErrors))) {
         throw new ApiError({ status: 401, message: INVALID, path: err.path });
@@ -29,8 +29,8 @@ export const auth = {
       }
       throw err;
     }
-    // LoginRespostaDTO: { id, nome, perfil } — completa com o e-mail e o RGM informados
-    const user = { ...res, email, rgm, token: extrairToken(res) };
+    // LoginRespostaDTO: { token, id, nome, email, rgm, perfil }
+    const user = { ...res, token: extrairToken(res) };
     invalidate();
     session.login(user, remember);
     return user;

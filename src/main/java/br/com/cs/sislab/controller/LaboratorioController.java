@@ -3,10 +3,13 @@ package br.com.cs.sislab.controller;
 import br.com.cs.sislab.dto.LaboratorioDTO;
 import br.com.cs.sislab.model.Laboratorio;
 import br.com.cs.sislab.service.LaboratorioService;
+import br.com.cs.sislab.security.UsuarioLogado;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.security.Principal;
 
 import java.util.List;
 
@@ -20,7 +23,8 @@ public class LaboratorioController {
     }
 
     @PostMapping
-    public ResponseEntity<Laboratorio> criar (@RequestHeader("idUsuario") Long idUsuario,@Valid @RequestBody LaboratorioDTO laboratorioDTO){
+    public ResponseEntity<Laboratorio> criar (Principal principal,@Valid @RequestBody LaboratorioDTO laboratorioDTO){
+        Long idUsuario = UsuarioLogado.id(principal);
         var laboratorio = laboratorioService.criar(idUsuario, laboratorioDTO.getNome(), laboratorioDTO.getBloco());
         return ResponseEntity.status(HttpStatus.CREATED).body(laboratorio);
     }
@@ -38,13 +42,15 @@ public class LaboratorioController {
     }
 
     @PutMapping ("/{id}")
-    public ResponseEntity<Laboratorio> atualizar (@RequestHeader("idUsuario") Long idUsuario, @PathVariable Long id, @Valid @RequestBody LaboratorioDTO laboratorioDTO){
+    public ResponseEntity<Laboratorio> atualizar (Principal principal, @PathVariable Long id, @Valid @RequestBody LaboratorioDTO laboratorioDTO){
+        Long idUsuario = UsuarioLogado.id(principal);
         var laboratorio = laboratorioService.atualizar(idUsuario, id, laboratorioDTO.getNome(), laboratorioDTO.getBloco());
         return ResponseEntity.status(HttpStatus.OK).body(laboratorio);
     }
 
     @DeleteMapping ("/{id}")
-    public ResponseEntity<Void> delete (@RequestHeader("idUsuario") Long idUsuario, @PathVariable Long id){
+    public ResponseEntity<Void> delete (Principal principal, @PathVariable Long id){
+        Long idUsuario = UsuarioLogado.id(principal);
         laboratorioService.delete(idUsuario, id);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }

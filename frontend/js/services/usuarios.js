@@ -31,14 +31,16 @@ export const usuarios = {
   },
 
   /** POST /usuario/cadastrar (público). */
-  async cadastrar({ nome, email, rgm, perfil }) {
-    const u = await api.post('/usuario/cadastrar', { nome, email, rgm, perfil }, { auth: false });
+  async cadastrar({ nome, email, rgm, perfil, senha }) {
+    // Público para DISCENTE/DOCENTE; ADMINISTRADOR só é aceito com um administrador autenticado (token enviado).
+    const u = await api.post('/usuario/cadastrar', { nome, email, rgm, perfil, senha }, { auth: perfil === 'ADMINISTRADOR' });
     invalidate('usuarios:');
     return u;
   },
 
-  async atualizar(id, { nome, email, rgm, perfil }) {
-    const u = await api.put(`/usuario/${id}`, { nome, email, rgm, perfil });
+  /** senha é opcional: em branco mantém a senha atual. */
+  async atualizar(id, { nome, email, rgm, perfil, senha }) {
+    const u = await api.put(`/usuario/${id}`, { nome, email, rgm, perfil, senha: senha || undefined });
     invalidate('usuarios:', 'turmas');
     return u;
   },

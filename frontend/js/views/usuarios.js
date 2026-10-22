@@ -92,7 +92,7 @@ export default async function usuariosView(ctx) {
   const novo = async () => {
     const r = await formModal({
       title: 'Novo usuário', iconName: 'userPlus', submitLabel: 'Cadastrar', size: 'lg',
-      fields: userFields({ perfil: state.aba !== 'TODOS' ? state.aba : 'DISCENTE' }),
+      fields: userFields({ perfil: state.aba !== 'TODOS' ? state.aba : 'DISCENTE' }, { senha: 'required' }),
       onSubmit: (d, f) => salvar(d, f),
     });
     if (r && r !== true) { toast.success(`${r.nome} cadastrado como ${PERFIS[r.perfil].label.toLowerCase()}.`, { title: 'Usuário criado' }); load(); }
@@ -107,7 +107,7 @@ export default async function usuariosView(ctx) {
     const self = u.id === session.user.id;
     const r = await formModal({
       title: 'Editar usuário', description: self ? 'Você está editando sua própria conta.' : `ID ${u.id}`, iconName: 'edit', size: 'lg',
-      fields: userFields(u, { perfilEditable: !self }),
+      fields: userFields(u, { perfilEditable: !self, senha: 'optional' }),
       onSubmit: (d, f) => salvar(d, f, u),
     });
     if (r && r !== true) {

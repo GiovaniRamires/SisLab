@@ -1,10 +1,12 @@
 package br.com.cs.sislab.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Table (name = "usuario")
 @Entity
@@ -32,6 +34,11 @@ public class Usuario {
     private String email;
     @Column(unique = true)
     private String rgm;
+
+    // Hash BCrypt da senha. Nunca é serializado na API nem impresso no toString.
+    @JsonIgnore
+    @ToString.Exclude
+    private String senhaHash;
 
     public Usuario(String nome, String email, String rgm, Perfil perfil) {
         this.nome = nome;

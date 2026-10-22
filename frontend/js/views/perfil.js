@@ -36,8 +36,8 @@ export default function perfil({ root }) {
       <form class="card mt-20" novalidate data-form>
         <div class="card-header"><div><h2 class="card-title">Editar dados</h2><p class="card-subtitle">O perfil de acesso só pode ser alterado por um administrador.</p></div></div>
         <div class="card-body form">
-          ${userFields(u, { withPerfil: false })}
-          ${callout({ tone: 'warning', title: 'Atenção ao alterar e-mail ou RGM', text: 'Eles são suas credenciais de login. Use os novos valores no próximo acesso.' })}
+          ${userFields(u, { withPerfil: false, senha: 'optional' })}
+          ${callout({ tone: 'warning', title: 'Atenção ao alterar e-mail ou senha', text: 'O e-mail e a senha são suas credenciais de login. Use os novos valores no próximo acesso.' })}
         </div>
         <div class="card-footer row end"><button class="btn btn-primary" type="submit">${icon('check')} Salvar alterações</button></div>
       </form>

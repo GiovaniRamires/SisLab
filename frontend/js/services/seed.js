@@ -1,16 +1,20 @@
-// Popula o backend (H2 em memória) com dados de demonstração — ferramenta de desenvolvimento.
+// Popula o backend (MySQL) com dados de demonstração — ferramenta de desenvolvimento.
 // Cada etapa é feita autenticando-se de verdade (POST /auth/login) com o usuário responsável,
 // respeitando as regras do Spring Security: ADM cria laboratórios/turmas, docentes criam reservas.
+// O administrador NÃO é cadastrado aqui (o cadastro público não cria administradores): ele é criado pelo
+// backend na inicialização (application.properties: admin@instituicao.edu.br / sislab123).
 import { api, ApiError } from '../core/api.js';
 import { auth } from './auth.js';
 import { invalidate } from './cache.js';
 import { toISODate, addDays } from '../core/format.js';
 
+export const DEMO_SENHA = 'sislab123';
+
 export const DEMO_USERS = {
-  admin: { nome: 'Administrador SisLab', email: 'admin@instituicao.edu.br', rgm: '00000001', perfil: 'ADMINISTRADOR' },
-  docente: { nome: 'Carlos Andrade', email: 'carlos@instituicao.edu.br', rgm: '20240001', perfil: 'DOCENTE' },
-  docente2: { nome: 'Ana Lima', email: 'ana.lima@instituicao.edu.br', rgm: '20240002', perfil: 'DOCENTE' },
-  discente: { nome: 'João Pereira', email: 'joao@aluno.instituicao.edu.br', rgm: '20250001', perfil: 'DISCENTE' },
+  admin: { nome: 'Administrador SisLab', email: 'admin@instituicao.edu.br', rgm: '00000001', senha: DEMO_SENHA, perfil: 'ADMINISTRADOR' },
+  docente: { nome: 'Carlos Andrade', email: 'carlos@instituicao.edu.br', rgm: '20240001', senha: DEMO_SENHA, perfil: 'DOCENTE' },
+  docente2: { nome: 'Ana Lima', email: 'ana.lima@instituicao.edu.br', rgm: '20240002', senha: DEMO_SENHA, perfil: 'DOCENTE' },
+  discente: { nome: 'João Pereira', email: 'joao@aluno.instituicao.edu.br', rgm: '20250001', senha: DEMO_SENHA, perfil: 'DISCENTE' },
 };
 
 const ALUNOS = [
@@ -39,30 +43,38 @@ async function inBatches(items, size, fn) {
   return out;
 }
 
-const entrarComo = (u) => auth.login(u.email, u.rgm, false);
+const entrarComo = (u) => auth.login(u.email, u.senha, false);
 
 export async function seedDemo(onProgress = () => {}) {
   const cadastrar = (u) => api.post('/usuario/cadastrar', u, { auth: false });
 
   onProgress('Criando usuários...');
+  let carlos;
   try {
-    await cadastrar(DEMO_USERS.admin);
+    carlos = await cadastrar(DEMO_USERS.docente);
   } catch (err) {
     if (err instanceof ApiError && err.status === 409) throw new DemoJaExiste('Os dados de demonstração já existem neste servidor.');
     throw err;
   }
-  const carlos = await cadastrar(DEMO_USERS.docente);
   await cadastrar(DEMO_USERS.docente2);
   const alunos = await inBatches(ALUNOS, 5, (nome, i) => cadastrar({
     nome,
     email: i === 0 ? DEMO_USERS.discente.email : `${slug(nome)}@aluno.instituicao.edu.br`,
     rgm: String(20250001 + i),
+    senha: DEMO_SENHA,
     perfil: 'DISCENTE',
   }));
 
   try {
     // ---------- Administrador: laboratórios, computadores, turmas e matrículas ----------
-    await entrarComo(DEMO_USERS.admin);
+    try {
+      await entrarComo(DEMO_USERS.admin);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        throw new Error(`Não foi possível entrar como ${DEMO_USERS.admin.email}. Confira se sislab.admin-inicial.email e sislab.admin-inicial.senha, em application.properties, são iguais aos usados aqui.`);
+      }
+      throw err;
+    }
     onProgress('Criando laboratórios e computadores...');
     const labs = [];
     for (const def of LABS) {

@@ -1,9 +1,7 @@
-// Cliente HTTP da API REST do SisLab, preparado para Spring Security.
-// - Envia cookies (credentials: 'include') para sessões baseadas em JSESSIONID
-// - Envia "Authorization: Bearer <token>" quando o login devolver um token
-// - Reenvia o token CSRF (cookie XSRF-TOKEN) em POST/PUT/DELETE
-// - Envia o header "idUsuario" exigido pelos controllers
-// - 401 em requisição autenticada => sessão expirada (tratado globalmente via onUnauthorized)
+// Cliente HTTP da API REST do SisLab, protegida por Spring Security + JWT.
+// - Envia "Authorization: Bearer <token>" (o token vem do login)
+// - O usuário logado é identificado pelo próprio token; o backend não aceita mais o header "idUsuario"
+// - 401 em requisição autenticada => token expirado/inválido (tratado globalmente via onUnauthorized)
 // - Normaliza erros em ApiError (status, mensagem amigável, erros por campo)
 import { config } from '../config.js';
 import { session } from './session.js';
@@ -71,7 +69,7 @@ session.subscribe((u) => { if (u) unauthorizedFired = false; });
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 /**
- * opts.auth (padrão true): envia credenciais do usuário logado (idUsuario + Bearer) e
+ * opts.auth (padrão true): envia o token do usuário logado (Bearer) e
  * trata 401 como sessão expirada. Use auth:false em endpoints públicos (login, cadastro).
  */
 export async function request(method, path, { body, headers = {}, auth = true, signal } = {}) {
@@ -80,10 +78,7 @@ export async function request(method, path, { body, headers = {}, auth = true, s
   if (body !== undefined) h['Content-Type'] = 'application/json';
 
   const user = session.user;
-  if (auth && user) {
-    h.idUsuario ??= String(user.id);
-    if (user.token) h.Authorization ??= `Bearer ${user.token}`;
-  }
+  if (auth && user?.token) h.Authorization ??= `Bearer ${user.token}`;
   if (MUTATING.has(method)) {
     const csrf = readCookie(config.auth.csrfCookie);
     if (csrf) h[config.auth.csrfHeader] = csrf;
