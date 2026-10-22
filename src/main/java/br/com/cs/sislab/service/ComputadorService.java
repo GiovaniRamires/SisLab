@@ -64,4 +64,10 @@ public class ComputadorService  {
      }
 
 
+     public List<Computador> listarPorLaboratorio(Long laboratorioId){
+        laboratorioService.buscarPorId(laboratorioId);
+        return computadorRepository.findByLaboratorioId(laboratorioId);
+     }
+
+
 }

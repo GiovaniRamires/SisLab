@@ -1,6 +1,7 @@
 package br.com.cs.sislab.controller;
 
 import br.com.cs.sislab.dto.ComputadorDTO;
+import br.com.cs.sislab.dto.MaquinaMapaDTO;
 import br.com.cs.sislab.model.Computador;
 import br.com.cs.sislab.service.ComputadorService;
 import br.com.cs.sislab.security.UsuarioLogado;
@@ -49,13 +50,17 @@ public class ComputadorController {
         return ResponseEntity.status(HttpStatus.OK).body(computador);
     }
 
-
-
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletar(Principal principal, @PathVariable Long id) {
         Long idUsuario = UsuarioLogado.id(principal);
     computadorService.deletar(idUsuario, id);
     return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
+
+    @GetMapping("/{id}/mapa")
+    public ResponseEntity<List<MaquinaMapaDTO>> mapa(@PathVariable Long id){
+        var mapa = computadorService.listarPorLaboratorio(id).stream().map(MaquinaMapaDTO::de).toList();
+        return ResponseEntity.ok(mapa);
     }
 
 }
