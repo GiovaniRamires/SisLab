@@ -6,7 +6,8 @@ import { toast, showError } from '../core/ui.js';
 import { usuarios } from '../services/usuarios.js';
 import { auth } from '../services/auth.js';
 
-export function userFields(u = {}, { withPerfil = true, perfilEditable = true, allowAdmin = true } = {}) {
+/** senha: null (sem campo) | 'required' (cadastro) | 'optional' (edição: em branco mantém a atual). */
+export function userFields(u = {}, { withPerfil = true, perfilEditable = true, allowAdmin = true, senha = null } = {}) {
   const perfil = u.perfil || 'DISCENTE';
   const opt = (value, label, ic) => html`
     <div class="role-option">
@@ -31,6 +32,19 @@ export function userFields(u = {}, { withPerfil = true, perfilEditable = true, a
         <div class="field-error"></div>
       </div>
     </div>
+    ${senha ? html`
+      <div class="form-grid">
+        <div class="field">
+          <label class="label" for="senha">${senha === 'required' ? 'Senha' : 'Nova senha'}${senha === 'required' ? html`<span class="req">*</span>` : ''}</label>
+          <input class="input" id="senha" name="senha" type="password" autocomplete="new-password" maxlength="72" placeholder="${senha === 'required' ? 'Mínimo de 8 caracteres' : 'Deixe em branco para manter'}" ${senha === 'required' ? 'required' : ''}>
+          <div class="field-error"></div>
+        </div>
+        <div class="field">
+          <label class="label" for="confirmarSenha">Confirmar senha</label>
+          <input class="input" id="confirmarSenha" name="confirmarSenha" type="password" autocomplete="new-password" maxlength="72">
+          <div class="field-error"></div>
+        </div>
+      </div>` : ''}
     ${withPerfil ? html`
       <div class="field">
         <span class="label">Perfil de acesso<span class="req">*</span></span>
@@ -49,6 +63,14 @@ export function validateUser(data, form) {
   if (!data.email) errors.email = 'Informe o e-mail.';
   else if (!form.email.checkValidity()) errors.email = 'Informe um e-mail válido.';
   if (!data.rgm) errors.rgm = 'Informe o RGM.';
+  const campoSenha = form.elements.senha;
+  if (campoSenha) {
+    if (!data.senha) {
+      if (campoSenha.required) errors.senha = 'Informe a senha.';
+    } else if (data.senha.length < 8) errors.senha = 'A senha deve ter no mínimo 8 caracteres.';
+    else if (data.senha.length > 72) errors.senha = 'A senha deve ter no máximo 72 caracteres.';
+    else if (data.senha !== data.confirmarSenha) errors.confirmarSenha = 'As senhas não conferem.';
+  }
   return errors;
 }
 
@@ -67,9 +89,9 @@ export default function cadastro({ root }) {
       <div class="auth-box wide">
         <a class="auth-brand" href="#/" style="text-decoration:none"><span class="brand-logo">S</span><span class="brand-name">SisLab</span></a>
         <h1>Criar conta</h1>
-        <p class="auth-sub">Cadastre-se para acessar o sistema. Você usará seu e-mail e RGM para entrar.</p>
+        <p class="auth-sub">Cadastre-se para acessar o sistema. Você usará seu e-mail e a senha escolhida para entrar.</p>
         <form class="auth-card form" novalidate data-form>
-          ${userFields({}, { allowAdmin: false })}
+          ${userFields({}, { allowAdmin: false, senha: 'required' })}
           <button class="btn btn-primary btn-block" style="height:43px;font-size:14px" type="submit">Criar conta e entrar</button>
           <p class="center text-sm muted">Já possui conta? <a href="#/login" class="fw-500">Entrar</a></p>
         </form>
@@ -87,7 +109,7 @@ export default function cadastro({ root }) {
     await withLoading(form.querySelector('button[type=submit]'), async () => {
       try {
         await usuarios.cadastrar(data);
-        await auth.login(data.email, data.rgm, true);
+        await auth.login(data.email, data.senha, true);
         toast.success('Sua conta foi criada com sucesso.', { title: 'Bem-vindo(a) ao SisLab!' });
         navigate('/app');
       } catch (err) {

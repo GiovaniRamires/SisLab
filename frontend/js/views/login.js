@@ -30,10 +30,10 @@ export default function login({ root }) {
             <div class="field-error"></div>
           </div>
           <div class="field">
-            <label class="label" for="rgm">RGM</label>
+            <label class="label" for="senha">Senha</label>
             <div class="input-addon">
-              <input class="input" id="rgm" name="rgm" type="password" autocomplete="current-password" placeholder="••••••••" required>
-              <button type="button" data-action="toggle-pass" aria-label="Mostrar RGM">${icon('eye')}</button>
+              <input class="input" id="senha" name="senha" type="password" autocomplete="current-password" placeholder="••••••••" required>
+              <button type="button" data-action="toggle-pass" aria-label="Mostrar senha">${icon('eye')}</button>
             </div>
             <div class="field-error"></div>
           </div>
@@ -69,14 +69,14 @@ export default function login({ root }) {
       render(statusEl, callout({ tone: 'warning', iconName: 'clock', title: 'Sua sessão expirou', text: 'Por segurança, entre novamente para continuar.' }));
       return;
     }
-    // Ferramenta de desenvolvimento: só aparece quando a API roda localmente (H2 em memória).
+    // Ferramenta de desenvolvimento: só aparece quando a API roda localmente.
     if (isLocalApi()) {
       render(statusEl, html`
         <div class="callout callout-neutral">
           ${icon('database')}
           <div class="grow">
             <p class="callout-title">Ambiente de desenvolvimento</p>
-            <p class="callout-text">O banco H2 começa vazio a cada reinício do servidor. Crie dados de demonstração para explorar o sistema.</p>
+            <p class="callout-text">Em um banco vazio, crie dados de demonstração para explorar o sistema (usuários, laboratórios, turmas e reservas).</p>
             <div class="row wrap mt-12">
               <button class="btn btn-secondary btn-sm" data-action="seed">${icon('sparkles')} Criar dados de demonstração</button>
             </div>
@@ -91,8 +91,8 @@ export default function login({ root }) {
 
   function showDemoCredentials(title) {
     const row = (u, label) => html`
-      <button class="list-row clickable" style="width:100%;padding:10px 12px;border:0;border-bottom:1px solid var(--border);text-align:left" data-fill="${u.email}|${u.rgm}">
-        <span><span class="list-title" style="display:block">${label}</span><span class="list-meta mono" style="display:block">${u.email} · RGM ${u.rgm}</span></span>
+      <button class="list-row clickable" style="width:100%;padding:10px 12px;border:0;border-bottom:1px solid var(--border);text-align:left" data-fill="${u.email}|${u.senha}">
+        <span><span class="list-title" style="display:block">${label}</span><span class="list-meta mono" style="display:block">${u.email} · senha ${u.senha}</span></span>
         ${icon('arrowRight')}
       </button>`;
     render(statusEl, html`
@@ -112,9 +112,9 @@ export default function login({ root }) {
 
   on(root, 'click', '[data-action=retry]', checkServer);
   on(root, 'click', '[data-fill]', (e, el) => {
-    const [email, rgm] = el.dataset.fill.split('|');
+    const [email, senha] = el.dataset.fill.split('|');
     form.email.value = email;
-    form.rgm.value = rgm;
+    form.senha.value = senha;
     form.querySelector('button[type=submit]').focus();
   });
   on(root, 'click', '[data-action=seed]', async (e, btn) => {
@@ -133,14 +133,14 @@ export default function login({ root }) {
     });
   });
   on(root, 'click', '[data-action=toggle-pass]', (e, btn) => {
-    const input = form.rgm;
+    const input = form.senha;
     const show = input.type === 'password';
     input.type = show ? 'text' : 'password';
     render(btn, icon(show ? 'eyeOff' : 'eye'));
-    btn.setAttribute('aria-label', show ? 'Ocultar RGM' : 'Mostrar RGM');
+    btn.setAttribute('aria-label', show ? 'Ocultar senha' : 'Mostrar senha');
   });
   on(root, 'click', '[data-action=forgot]', () => {
-    toast.info('O acesso usa seu e-mail institucional e seu RGM. Em caso de dúvida, procure a administração do laboratório.', { title: 'Recuperar acesso', duration: 7000 });
+    toast.info('O acesso usa seu e-mail institucional e a senha definida no cadastro. Para redefinir a senha, procure a administração do laboratório.', { title: 'Recuperar acesso', duration: 7000 });
   });
   on(root, 'click', '[data-action=server]', async () => {
     const r = await formModal({
@@ -169,23 +169,23 @@ export default function login({ root }) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     clearFieldErrors(form);
-    const { email, rgm } = formData(form);
+    const { email, senha } = formData(form);
     const errors = {};
     if (!email) errors.email = 'Informe seu e-mail.';
     else if (!form.email.checkValidity()) errors.email = 'Informe um e-mail válido.';
-    if (!rgm) errors.rgm = 'Informe seu RGM.';
+    if (!senha) errors.senha = 'Informe sua senha.';
     if (showFieldErrors(form, errors)) return;
 
     await withLoading(form.querySelector('button[type=submit]'), async () => {
       try {
-        const user = await auth.login(email, rgm, form.remember.checked);
+        const user = await auth.login(email, senha, form.remember.checked);
         sessionStorage.removeItem('sislab.expired');
         toast.success(`Bem-vindo(a), ${user.nome.split(' ')[0]}!`, { title: 'Login realizado' });
         const redirect = sessionStorage.getItem('sislab.redirect');
         sessionStorage.removeItem('sislab.redirect');
         navigate(redirect && redirect !== '/login' ? redirect : '/app');
       } catch (err) {
-        if (err.status === 401) showFieldErrors(form, { rgm: err.message });
+        if (err.status === 401) showFieldErrors(form, { senha: err.message });
         showError(err, 'Não foi possível entrar');
       }
     });

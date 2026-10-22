@@ -1,0 +1,16 @@
+# Opcional: MySQL sem instalar nada. `docker compose up -d`
+# Se você já tem MySQL instalado, ignore este arquivo e ajuste usuário/senha em application.properties.
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: sislab-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: sislab
+    ports:
+      - "3306:3306"
+    volumes:
+      - sislab-mysql-data:/var/lib/mysql
+
+volumes:
+  sislab-mysql-data:

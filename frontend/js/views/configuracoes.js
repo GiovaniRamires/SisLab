@@ -38,7 +38,7 @@ export default function configuracoes({ root }) {
           <div><p class="kv-label">Aplicação</p><p class="kv-value">SisLab — Front-end</p></div>
           <div><p class="kv-label">Tecnologia</p><p class="kv-value">HTML, CSS e JavaScript (ES Modules)</p></div>
           <div><p class="kv-label">Documentação da API</p><p class="kv-value"><a href="${config.apiUrl}/swagger-ui/index.html" target="_blank" rel="noopener">Swagger UI ${icon('external')}</a></p></div>
-          <div><p class="kv-label">Console do banco</p><p class="kv-value"><a href="${config.apiUrl}/h2-console" target="_blank" rel="noopener">H2 Console ${icon('external')}</a></p></div>
+          <div><p class="kv-label">Autenticação</p><p class="kv-value">JWT (Bearer) · senhas com BCrypt</p></div>
         </div>
       </div>
     </div>`);

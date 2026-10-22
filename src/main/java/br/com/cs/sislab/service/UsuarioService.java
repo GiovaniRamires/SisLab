@@ -4,6 +4,7 @@ import br.com.cs.sislab.model.Usuario;
 import br.com.cs.sislab.model.Usuario.Perfil;
 import br.com.cs.sislab.repository.UsuarioRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -13,27 +14,31 @@ import java.util.List;
 public class UsuarioService {
     private static final String USER_NOT_FOUND = "Usuário não encontrado";
     private final UsuarioRepository usuarioRepository;
+    private final PasswordEncoder passwordEncoder;
 
 
-    UsuarioService(UsuarioRepository usuarioRepository) {
+    UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
         this.usuarioRepository = usuarioRepository;
+        this.passwordEncoder = passwordEncoder;
     }
     
 
-    public Usuario criarDocente(String nome, String email, String rgm){
-        Usuario docente = new Usuario(nome, email, rgm, Perfil.DOCENTE);
-        return usuarioRepository.save(docente);
+    public Usuario criarDocente(String nome, String email, String rgm, String senha){
+        return criar(nome, email, rgm, senha, Perfil.DOCENTE);
     }
 
-    public Usuario criarDiscente(String nome, String email, String rgm){
-        Usuario discente = new Usuario(nome, email, rgm, Perfil.DISCENTE);
-
-        return usuarioRepository.save(discente);
+    public Usuario criarDiscente(String nome, String email, String rgm, String senha){
+        return criar(nome, email, rgm, senha, Perfil.DISCENTE);
     }
 
-    public Usuario criarAdm(String nome, String email, String rgm){
-        Usuario adm = new Usuario(nome, email, rgm, Perfil.ADMINISTRADOR);
-        return usuarioRepository.save(adm);
+    public Usuario criarAdm(String nome, String email, String rgm, String senha){
+        return criar(nome, email, rgm, senha, Perfil.ADMINISTRADOR);
+    }
+
+    private Usuario criar(String nome, String email, String rgm, String senha, Perfil perfil){
+        Usuario usuario = new Usuario(nome, email, rgm, perfil);
+        usuario.setSenhaHash(passwordEncoder.encode(senha));
+        return usuarioRepository.save(usuario);
     }
 
     public List<Usuario> listarDocentes() {
@@ -54,12 +59,15 @@ public class UsuarioService {
         return usuarioRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, USER_NOT_FOUND));
     }
 
-    public Usuario atualizarUsuario (Long id, String nome, String email, String rgm, Perfil perfil){
+    public Usuario atualizarUsuario (Long id, String nome, String email, String rgm, Perfil perfil, String novaSenha){
         Usuario usuario = usuarioRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, USER_NOT_FOUND));
         usuario.setNome(nome);
         usuario.setEmail(email);
         usuario.setRgm(rgm);
         usuario.setPerfil(perfil);
+        if (novaSenha != null && !novaSenha.isBlank()) {
+            usuario.setSenhaHash(passwordEncoder.encode(novaSenha));
+        }
         usuarioRepository.save(usuario);
         return usuario;
     }

@@ -19,13 +19,12 @@ export const config = {
   cacheTtl: 30_000,
 
   /*
-   * Autenticação (Spring Security).
-   * - login:  POST { email, rgm } -> { id, nome, perfil, [token] }
-   *           Se a resposta trouxer um token (token | accessToken | jwt), ele é enviado
-   *           em "Authorization: Bearer"; caso contrário vale o cookie de sessão (JSESSIONID).
-   * - logout: POST, chamado ao sair (falhas são ignoradas).
-   * - csrf:   se o backend usar CookieCsrfTokenRepository (ex.: csrf.spa()), o valor do cookie
-   *           é reenviado no header abaixo nas requisições que alteram dados.
+   * Autenticação (Spring Security + JWT).
+   * - login:  POST { email, senha } -> { token, id, nome, email, rgm, perfil }
+   *           O token é enviado em "Authorization: Bearer" em todas as requisições autenticadas.
+   * - logout: POST, chamado ao sair (falhas são ignoradas). O JWT é stateless: o token é descartado no cliente.
+   * - csrf:   o backend não usa cookies de sessão (CSRF desativado); o suporte abaixo só entra em ação
+   *           se algum dia existir o cookie XSRF-TOKEN.
    */
   auth: {
     loginPath: '/auth/login',
