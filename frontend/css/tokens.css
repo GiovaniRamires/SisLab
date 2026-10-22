@@ -1,0 +1,65 @@
+/* Design tokens extraídos do protótipo Figma do SisLab */
+:root {
+  /* Marca */
+  --primary: #1d4ed8;
+  --primary-hover: #1e40af;
+  --primary-50: #eff6ff;
+  --primary-100: #dbeafe;
+  --primary-200: #bfdbfe;
+  --primary-500: #3b82f6;
+
+  /* Texto */
+  --text: #0f172a;
+  --text-2: #334155;
+  --muted: #475569;
+  --muted-2: #64748b;
+  --subtle: #94a3b8;
+  --faint: #cbd5e1;
+
+  /* Superfícies */
+  --bg: #f1f5f9;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --border: #e2e8f0;
+  --border-strong: #d1d5db;
+
+  /* Estados */
+  --success: #16a34a;
+  --success-bg: #f0fdf4;
+  --success-border: #bbf7d0;
+  --warning: #d97706;
+  --warning-bg: #fffbeb;
+  --warning-border: #fde68a;
+  --warning-text: #92400e;
+  --warning-text-2: #b45309;
+  --danger: #ef4444;
+  --danger-strong: #dc2626;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+  --danger-text: #b91c1c;
+  --info-text: #1e40af;
+  --purple: #7c3aed;
+  --purple-bg: #f5f3ff;
+
+  /* Tipografia */
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Raios */
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 16px;
+  --r-full: 999px;
+
+  /* Sombras */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 20px 48px rgba(15, 23, 42, 0.18);
+
+  /* Layout */
+  --sidebar-w: 240px;
+  --topbar-h: 60px;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
