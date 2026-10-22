@@ -6,7 +6,7 @@ import { toast, showError } from '../core/ui.js';
 import { usuarios } from '../services/usuarios.js';
 import { auth } from '../services/auth.js';
 
-export function userFields(u = {}, { withPerfil = true, perfilEditable = true } = {}) {
+export function userFields(u = {}, { withPerfil = true, perfilEditable = true, allowAdmin = true } = {}) {
   const perfil = u.perfil || 'DISCENTE';
   const opt = (value, label, ic) => html`
     <div class="role-option">
@@ -37,7 +37,7 @@ export function userFields(u = {}, { withPerfil = true, perfilEditable = true } 
         <div class="role-picker">
           ${opt('DISCENTE', 'Discente', 'book')}
           ${opt('DOCENTE', 'Docente', 'graduation')}
-          ${opt('ADMINISTRADOR', 'Administrador', 'shield')}
+          ${allowAdmin ? opt('ADMINISTRADOR', 'Administrador', 'shield') : ''}
         </div>
         <div class="field-error"></div>
       </div>` : ''}`;
@@ -69,7 +69,7 @@ export default function cadastro({ root }) {
         <h1>Criar conta</h1>
         <p class="auth-sub">Cadastre-se para acessar o sistema. Você usará seu e-mail e RGM para entrar.</p>
         <form class="auth-card form" novalidate data-form>
-          ${userFields()}
+          ${userFields({}, { allowAdmin: false })}
           <button class="btn btn-primary btn-block" style="height:43px;font-size:14px" type="submit">Criar conta e entrar</button>
           <p class="center text-sm muted">Já possui conta? <a href="#/login" class="fw-500">Entrar</a></p>
         </form>

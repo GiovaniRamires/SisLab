@@ -27,14 +27,19 @@ public class UsuarioController {
         if(perfil != Perfil.DOCENTE && perfil != Perfil.DISCENTE && perfil != Perfil.ADMINISTRADOR){
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
+        // Regra de segurança (Plano B): o cadastro público NÃO pode criar ADMINISTRADOR.
+        // Um admin só pode ser criado por outro admin já autenticado.
+        // Quando o Spring Security entrar, trocar esta checagem por
+        //   @PreAuthorize("hasRole('ADMINISTRADOR')") no endpoint de criação de admin/docente.
+        // Por enquanto (sem Security), o auto-cadastro só permite DISCENTE e DOCENTE;
+        // ADMINISTRADOR fica bloqueado aqui.
+        if(perfil == Perfil.ADMINISTRADOR){
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         if(perfil == Perfil.DISCENTE){
             var novoDiscente = usuarioService.criarDiscente(usuarioDTO.getNome(), usuarioDTO.getEmail(),
                 usuarioDTO.getRgm());
         return ResponseEntity.status(HttpStatus.CREATED).body(novoDiscente);
-        } else if (perfil == Perfil.ADMINISTRADOR){
-        var novoAdm = usuarioService.criarAdm(usuarioDTO.getNome(), usuarioDTO.getEmail(),
-            usuarioDTO.getRgm());
-        return ResponseEntity.status(HttpStatus.CREATED).body(novoAdm);
         } else{
         var novoDocente = usuarioService.criarDocente(usuarioDTO.getNome(), usuarioDTO.getEmail(),
             usuarioDTO.getRgm());
