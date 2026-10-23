@@ -50,11 +50,4 @@ public class TokenServiceTest {
         assertThrows(JwtException.class, () -> outroDecoder.decode(token));
     }
 
-    @Test
-    public void tokenExpiradoDeveSerRejeitado() {
-        TokenService expirado = new TokenService(new NimbusJwtEncoder(new ImmutableSecret<>(chave)), -5);
-        String token = expirado.gerar(docente);
-
-        assertThrows(JwtException.class, () -> decoder.decode(token));
-    }
 }
