@@ -50,7 +50,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/reserva/*").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/reserva/*").authenticated()
                         // Painel do discente
-                        .requestMatchers("/aluno/**").hasRole("DISCENTE")
+                        .requestMatchers("/aluno/**").hasAnyRole("DISCENTE", "DOCENTE", "ADMINISTRADOR")
 
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)));

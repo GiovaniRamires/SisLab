@@ -75,7 +75,8 @@ public class ReservaService {
         if (!admin && !dono) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso negado!");
         }
-        reservaRepository.delete(reserva);
+        reserva.setStatus(StatusReserva.CANCELADA);
+        reservaRepository.save(reserva);
     }
 
     private void exigirAdminOuDono(Usuario usuario, Reserva reserva) {

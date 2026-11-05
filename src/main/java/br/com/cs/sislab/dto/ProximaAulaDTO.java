@@ -1,3 +1,5 @@
+package br.com.cs.sislab.dto;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 
