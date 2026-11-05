@@ -36,4 +36,11 @@ public class ReservaController {
         var reserva = reservaService.buscarPorId(idUsuario, id);
         return ResponseEntity.status(HttpStatus.OK).body(ReservaRespostaDTO.de(reserva));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> cancelar(Principal principal, @PathVariable Long id) {
+        reservaService.cancelar(UsuarioLogado.id(principal), id);
+        return ResponseEntity.noContent().build();
+    }
+
 }

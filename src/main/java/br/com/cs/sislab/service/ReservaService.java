@@ -50,6 +50,12 @@ public class ReservaService {
                     "O laboratório já está reservado nesse horário");
         }
 
+        if (reservaRepository.turmaEmConflito(turmaId, data, horaInicio, horaFim, StatusReserva.CONFIRMADA)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "A turma já possui uma reserva nesse horário");
+        }
+
+
         return reservaRepository.save(new Reserva(laboratorio, turma, data, horaInicio, horaFim, justificativa));
     }
 
@@ -60,6 +66,18 @@ public class ReservaService {
         return reserva;
     }
 
+    public void cancelar(Long idUsuario, Long reservaId) {
+        Reserva reserva = reservaRepository.findById(reservaId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reserva não encontrada"));
+        Usuario usuario = usuarioService.buscarPorId(idUsuario);
+        boolean admin = usuario.getPerfil() == Usuario.Perfil.ADMINISTRADOR;
+        boolean dono = usuario.getId().equals(reserva.getDocente().getId());
+        if (!admin && !dono) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso negado!");
+        }
+        reservaRepository.delete(reserva);
+    }
+
     private void exigirAdminOuDono(Usuario usuario, Reserva reserva) {
         boolean ehAdmin = usuario.getPerfil() == Usuario.Perfil.ADMINISTRADOR;
         boolean ehDono = usuario.getPerfil() == Usuario.Perfil.DOCENTE
@@ -68,4 +86,6 @@ public class ReservaService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso negado!");
         }
     }
+
+
 }

@@ -26,4 +26,5 @@ public interface AlocacaoRepository extends JpaRepository<Alocacao, Long> {
             """)
     long contarMaquinasPorStatus(@Param("laboratorioId") Long laboratorioId,
                                  @Param("status") Computador.StatusComputador status);
+
 }

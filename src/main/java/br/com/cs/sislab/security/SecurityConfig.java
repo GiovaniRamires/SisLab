@@ -46,6 +46,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/usuario/*").authenticated()
                         .requestMatchers("/usuario/**").hasRole("ADMINISTRADOR")
                         // As regras finas por perfil/dono continuam nos services
+                        // Editar/cancelar reserva: exige login; o service valida se é ADMINISTRADOR ou o docente dono
+                        .requestMatchers(HttpMethod.PUT, "/reserva/*").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/reserva/*").authenticated()
+                        // Painel do discente
+                        .requestMatchers("/aluno/**").hasRole("DISCENTE")
+
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)));
         return http.build();
