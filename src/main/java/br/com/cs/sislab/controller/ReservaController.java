@@ -45,6 +45,15 @@ public class ReservaController {
         return ResponseEntity.status(HttpStatus.OK).body(ReservaRespostaDTO.de(reserva));
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<ReservaRespostaDTO> atualizar(Principal principal, @PathVariable Long id,
+                                                        @Valid @RequestBody ReservaDTO dto) {
+        Long idUsuario = UsuarioLogado.id(principal);
+        var reserva = reservaService.atualizar(idUsuario, id, dto.getLaboratorioId(), dto.getTurmaId(),
+                dto.getData(), dto.getHoraInicio(), dto.getHoraFim(), dto.getJustificativa());
+        return ResponseEntity.ok(ReservaRespostaDTO.de(reserva));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> cancelar(Principal principal, @PathVariable Long id) {
         reservaService.cancelar(UsuarioLogado.id(principal), id);

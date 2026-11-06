@@ -124,7 +124,7 @@ public class ReservaServiceTest {
         when(usuarioService.buscarPorId(1L)).thenReturn(docente);
         when(turmaService.buscarPorId(10L)).thenReturn(turma);
         when(laboratorioService.buscarPorId(20L)).thenReturn(lab);
-        when(reservaRepository.existeConflito(20L, amanha, oito, dez, StatusReserva.CONFIRMADA)).thenReturn(true);
+        when(reservaRepository.existeConflito(20L, amanha, oito, dez, StatusReserva.CONFIRMADA, -1L)).thenReturn(true);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> reservaService.criar(1L, 20L, 10L, amanha, oito, dez, null));
@@ -138,9 +138,9 @@ public class ReservaServiceTest {
         when(usuarioService.buscarPorId(1L)).thenReturn(docente);
         when(turmaService.buscarPorId(10L)).thenReturn(turma);
         when(laboratorioService.buscarPorId(20L)).thenReturn(lab);
-        when(reservaRepository.existeConflito(20L, amanha, oito, dez, StatusReserva.CONFIRMADA)).thenReturn(false);
-        when(reservaRepository.turmaEmConflito(10L, amanha, oito, dez, StatusReserva.CONFIRMADA)).thenReturn(false);
-        when(reservaRepository.docenteEmConflito(1L, amanha, oito, dez, StatusReserva.CONFIRMADA)).thenReturn(true);
+        when(reservaRepository.existeConflito(20L, amanha, oito, dez, StatusReserva.CONFIRMADA, -1L)).thenReturn(false);
+        when(reservaRepository.turmaEmConflito(10L, amanha, oito, dez, StatusReserva.CONFIRMADA, -1L)).thenReturn(false);
+        when(reservaRepository.docenteEmConflito(1L, amanha, oito, dez, StatusReserva.CONFIRMADA, -1L)).thenReturn(true);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> reservaService.criar(1L, 20L, 10L, amanha, oito, dez, null));
@@ -183,6 +183,39 @@ public class ReservaServiceTest {
                 () -> reservaService.listar(2L));
 
         assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+    }
+
+    @Test
+    public void deveAtualizarReservaDoDono() {
+        Reserva existente = reservaSalva();
+        when(reservaRepository.findById(5L)).thenReturn(Optional.of(existente));
+        when(usuarioService.buscarPorId(1L)).thenReturn(docente);
+        when(laboratorioService.buscarPorId(20L)).thenReturn(lab);
+        when(turmaService.buscarPorId(10L)).thenReturn(turma);
+        when(reservaRepository.existeConflito(20L, amanha, oito, dez, StatusReserva.CONFIRMADA, 5L)).thenReturn(false);
+        when(reservaRepository.turmaEmConflito(10L, amanha, oito, dez, StatusReserva.CONFIRMADA, 5L)).thenReturn(false);
+        when(reservaRepository.docenteEmConflito(1L, amanha, oito, dez, StatusReserva.CONFIRMADA, 5L)).thenReturn(false);
+        when(reservaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Reserva r = reservaService.atualizar(1L, 5L, 20L, 10L, amanha, oito, dez, "Atualizada");
+
+        assertEquals("Atualizada", r.getJustificativa());
+        verify(reservaRepository).save(existente);
+    }
+
+    @Test
+    public void atualizarComConflitoDeHorarioDeveRetornar409() {
+        when(reservaRepository.findById(5L)).thenReturn(Optional.of(reservaSalva()));
+        when(usuarioService.buscarPorId(1L)).thenReturn(docente);
+        when(laboratorioService.buscarPorId(20L)).thenReturn(lab);
+        when(turmaService.buscarPorId(10L)).thenReturn(turma);
+        when(reservaRepository.existeConflito(20L, amanha, oito, dez, StatusReserva.CONFIRMADA, 5L)).thenReturn(true);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> reservaService.atualizar(1L, 5L, 20L, 10L, amanha, oito, dez, null));
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        verify(reservaRepository, never()).save(any());
     }
 
     private Reserva reservaSalva() {
