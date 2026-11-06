@@ -83,6 +83,18 @@ export const reservas = {
   },
 };
 
+/* Alocação de alunos em máquinas: /reserva/{id}/alocacoes */
+export const alocacoesAcoes = {
+  /** Realoca um aluno já alocado para outra máquina (ex.: o PC atual quebrou). */
+  mover(reservaId, alunoId, maquinaId) {
+    return api.put(`/reserva/${reservaId}/alocacoes/${alunoId}`, { maquinaId: Number(maquinaId) });
+  },
+  /** Remove a alocação de um aluno (libera a estação). */
+  desalocar(reservaId, alunoId) {
+    return api.del(`/reserva/${reservaId}/alocacoes/${alunoId}`);
+  },
+};
+
 /** Verifica sobreposição de horário entre uma reserva e um intervalo. */
 export function conflita(r, data, ini, fim) {
   if (r.status === 'CANCELADA' || r.data !== data) return false;

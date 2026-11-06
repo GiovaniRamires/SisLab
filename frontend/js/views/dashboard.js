@@ -193,12 +193,11 @@ async function admin(root) {
 /* ===================== Discente ===================== */
 async function discente(root) {
   render(root, html`<div class="page">${skeletonStats(3)}<div class="mt-20">${skeletonRows(1)}</div></div>`);
-  const [labs, proxima] = await Promise.all([
-    laboratorios.listarComResumo(),
+  // O discente só enxerga o que é dele: próxima aula e suas reservas futuras.
+  const [proxima, minhas] = await Promise.all([
     aluno.proximaAula().catch(() => null),
+    aluno.minhasReservas().catch(() => []),
   ]);
-  const ativos = labs.reduce((s, l) => s + l.ativos, 0);
-  const manut = labs.reduce((s, l) => s + l.manutencao, 0);
 
   const painelProximaAula = proxima
     ? html`
@@ -220,7 +219,7 @@ async function discente(root) {
         <hr class="divider">
         <div class="row between wrap" style="gap:12px">
           <div><p class="kv-label">Seu computador</p><p class="text-lg fw-700 mt-4" style="color:var(--primary)">${icon('monitor')} ${proxima.maquinaIdentificador}</p></div>
-          <a class="btn btn-secondary" href="#/laboratorios">${icon('mapPin')} Ver laboratório</a>
+          <a class="btn btn-secondary" href="#/minhas-aulas">${icon('mapPin')} Ver no mapa</a>
         </div>
       </div>`
     : html`
@@ -229,21 +228,21 @@ async function discente(root) {
   render(root, html`
     <div class="page">
       <div class="page-header" style="margin-top:0">
-        <div><h1 class="page-title">Olá, ${firstName(session.user.nome)}!</h1><p class="page-subtitle">Veja sua próxima aula e consulte os laboratórios.</p></div>
+        <div><h1 class="page-title">Olá, ${firstName(session.user.nome)}!</h1><p class="page-subtitle">Veja sua próxima aula e onde você vai sentar.</p></div>
       </div>
       <div class="grid grid-3">
         ${statCard({ label: 'Próxima aula', value: proxima ? proxima.laboratorioNome.replace(/^Laborat[óo]rio\s*/i, 'Lab ') : '—', hint: proxima ? `${fmtRelativeDay(proxima.data, { withDate: false })} — ${fmtTime(proxima.horaInicio)}` : 'Nenhuma agendada', tone: 'primary' })}
-        ${statCard({ label: 'Computadores disponíveis', value: String(ativos).padStart(2, '0'), hint: 'Ativos agora', tone: 'success' })}
-        ${statCard({ label: 'Em manutenção', value: String(manut).padStart(2, '0'), hint: 'Temporariamente indisponíveis', tone: manut ? 'warning' : '' })}
+        ${statCard({ label: 'Seu computador', value: proxima ? proxima.maquinaIdentificador : '—', hint: proxima ? 'Na próxima aula' : 'Sem alocação', tone: 'success' })}
+        ${statCard({ label: 'Aulas futuras', value: String(minhas.length).padStart(2, '0'), hint: 'Agendadas', tone: '' })}
       </div>
       ${painelProximaAula}
       <div class="card mt-20">
-        <div class="card-header"><h2 class="card-title">Laboratórios</h2><a class="btn btn-link" href="#/laboratorios">Ver todos ${icon('arrowRight')}</a></div>
-        ${labs.length ? labs.map((l) => html`
-          <a class="list-row" href="#/laboratorios/${l.id}">
-            <div><p class="list-title">${l.nome}</p><p class="list-meta">${l.bloco} · ${plural(l.total, 'computador', 'computadores')}</p></div>
-            <span class="badge ${l.ativos ? 'badge-success' : 'badge-danger'} dot">${l.ativos} disponíveis</span>
-          </a>`) : html`<div class="card-body muted text-sm">Nenhum laboratório cadastrado.</div>`}
+        <div class="card-header"><h2 class="card-title">Minhas aulas</h2><a class="btn btn-link" href="#/minhas-aulas">Ver todas ${icon('arrowRight')}</a></div>
+        ${minhas.length ? minhas.slice(0, 5).map((r) => html`
+          <a class="list-row" href="#/minhas-aulas/${r.laboratorioId}?reserva=${r.reservaId}">
+            <div class="grow"><p class="list-title">${r.disciplina}</p><p class="list-meta">${fmtDate(r.data)} · ${fmtRange(r.horaInicio, r.horaFim)} · ${r.laboratorioNome}</p></div>
+            <span class="badge badge-info">${r.maquinaIdentificador}</span>
+          </a>`) : html`<div class="card-body muted text-sm">Você ainda não tem aulas agendadas.</div>`}
       </div>
     </div>`);
 }

@@ -31,7 +31,7 @@ const MENUS = {
   DISCENTE: [
     { section: 'Menu principal' },
     { path: '/app', label: 'Dashboard', icon: 'dashboard', exact: true },
-    { path: '/laboratorios', label: 'Laboratórios', icon: 'building' },
+    { path: '/minhas-aulas', label: 'Minhas aulas', icon: 'calendar' },
   ],
 };
 
