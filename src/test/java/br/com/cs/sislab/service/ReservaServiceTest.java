@@ -149,6 +149,42 @@ public class ReservaServiceTest {
         verify(reservaRepository, never()).save(any());
     }
 
+    @Test
+    public void administradorListaTodasAsReservas() {
+        Usuario adm = new Usuario("Adm", "adm@email.com", "9", Usuario.Perfil.ADMINISTRADOR);
+        adm.setId(9L);
+        when(usuarioService.buscarPorId(9L)).thenReturn(adm);
+        when(reservaRepository.findAllByOrderByDataAscHoraInicioAsc()).thenReturn(java.util.List.of(reservaSalva()));
+
+        var lista = reservaService.listar(9L);
+
+        assertEquals(1, lista.size());
+        verify(reservaRepository).findAllByOrderByDataAscHoraInicioAsc();
+    }
+
+    @Test
+    public void docenteListaApenasAsSuasReservas() {
+        when(usuarioService.buscarPorId(1L)).thenReturn(docente);
+        when(reservaRepository.findByTurmaDocenteIdOrderByDataAscHoraInicioAsc(1L)).thenReturn(java.util.List.of(reservaSalva()));
+
+        var lista = reservaService.listar(1L);
+
+        assertEquals(1, lista.size());
+        verify(reservaRepository).findByTurmaDocenteIdOrderByDataAscHoraInicioAsc(1L);
+    }
+
+    @Test
+    public void discenteNaoListaReservasPorEsteEndpoint() {
+        Usuario aluno = new Usuario("Bia", "bia@email.com", "2", Usuario.Perfil.DISCENTE);
+        aluno.setId(2L);
+        when(usuarioService.buscarPorId(2L)).thenReturn(aluno);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> reservaService.listar(2L));
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+    }
+
     private Reserva reservaSalva() {
         Reserva r = new Reserva(lab, turma, amanha, oito, dez, null);
         r.setId(5L);

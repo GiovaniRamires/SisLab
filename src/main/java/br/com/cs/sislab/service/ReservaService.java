@@ -63,6 +63,17 @@ public class ReservaService {
         return reservaRepository.save(new Reserva(laboratorio, turma, data, horaInicio, horaFim, justificativa));
     }
 
+    // Lista as reservas conforme o perfil: ADMINISTRADOR vê todas; DOCENTE vê as suas.
+    public java.util.List<Reserva> listar(Long idUsuario) {
+        Usuario usuario = usuarioService.buscarPorId(idUsuario);
+        return switch (usuario.getPerfil()) {
+            case ADMINISTRADOR -> reservaRepository.findAllByOrderByDataAscHoraInicioAsc();
+            case DOCENTE -> reservaRepository.findByTurmaDocenteIdOrderByDataAscHoraInicioAsc(idUsuario);
+            case DISCENTE -> throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Discentes consultam suas aulas em /aluno/minhas-reservas");
+        };
+    }
+
     public Reserva buscarPorId(Long idUsuario, Long id) {
         Reserva reserva = reservaRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reserva não encontrada"));
