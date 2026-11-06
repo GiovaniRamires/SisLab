@@ -76,6 +76,11 @@ export const reservas = {
   async proximas() {
     return (await this.listar()).filter((r) => ['AGENDADA', 'EM_ANDAMENTO'].includes(situacao(r)));
   },
+  /** Cancela a reserva (DELETE /reserva/{id}). O backend marca como CANCELADA. */
+  async cancelar(id) {
+    await api.del(`/reserva/${id}`);
+    invalidate('reservas');
+  },
 };
 
 /** Verifica sobreposição de horário entre uma reserva e um intervalo. */

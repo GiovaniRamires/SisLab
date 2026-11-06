@@ -20,6 +20,7 @@ export default async function reservaDetalhe(ctx) {
 
   const isDono = () => session.isDocente && reserva && String(reserva.docenteId) === String(session.user.id);
   const podeAlocar = () => isDono() && situacao(reserva) !== 'CANCELADA';
+  const podeCancelar = () => reserva && (session.isAdmin || isDono()) && situacao(reserva) === 'AGENDADA';
 
   async function load() {
     render(root, html`<div class="page">${loadingBlock('Carregando reserva...')}</div>`);
@@ -70,8 +71,9 @@ export default async function reservaDetalhe(ctx) {
           title: html`${reserva.laboratorioNome} — Alocação de alunos`,
           subtitle: html`${reserva.disciplina} · ${fmtRelativeDay(reserva.data)} · ${fmtRange(reserva.horaInicio, reserva.horaFim)}`,
           back: { href: '/reservas', label: session.isAdmin ? 'Reservas' : 'Minhas reservas' },
-          actions: html`${reservaBadge(reserva)}<span class="badge badge-neutral mono">#${reserva.id}</span>`,
+          actions: html`${reservaBadge(reserva)}<span class="badge badge-neutral mono">#${reserva.id}</span>${podeCancelar() ? html`<button class="btn btn-danger-soft" data-action="cancelar">${icon('x')} Cancelar reserva</button>` : ''}`,
         })}
+        ${sit === 'CANCELADA' ? html`<div class="mt-16">${callout({ tone: 'danger', iconName: 'x', title: 'Reserva cancelada', text: 'Esta reserva foi cancelada e o horário do laboratório foi liberado.' })}</div>` : ''}
         ${nova ? html`<div class="mb-16">${stepper(['Data e horário', 'Escolher laboratório', 'Mapa e alocação'], 3)}</div>` : ''}
 
         <div class="summary-strip">
@@ -147,6 +149,21 @@ export default async function reservaDetalhe(ctx) {
 
   on(root, 'click', '[data-action=retry]', load);
   on(root, 'click', '[data-action=manual]', () => { modo = 'manual'; paint(); });
+  on(root, 'click', '[data-action=cancelar]', async () => {
+    const ok = await confirmDialog({
+      title: 'Cancelar esta reserva?',
+      message: `A reserva de ${reserva.laboratorioNome} em ${fmtDate(reserva.data)} (${fmtRange(reserva.horaInicio, reserva.horaFim)}) será cancelada e o horário liberado. Esta ação não pode ser desfeita.`,
+      confirmLabel: 'Cancelar reserva', cancelLabel: 'Voltar', danger: true, iconName: 'x',
+    });
+    if (!ok) return;
+    try {
+      await reservas.cancelar(id);
+      toast.success('A reserva foi cancelada e o horário foi liberado.', { title: 'Reserva cancelada' });
+      await load();
+    } catch (err) {
+      showError(err, 'Não foi possível cancelar a reserva');
+    }
+  });
   on(root, 'click', '[data-aluno]', (e, el) => {
     const a = alunos.find((x) => String(x.id) === el.dataset.aluno);
     selAluno = selAluno?.id === a.id ? null : a;

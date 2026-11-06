@@ -8,6 +8,7 @@ import { laboratorios } from '../services/laboratorios.js';
 import { reservas, alocacoes, situacao } from '../services/reservas.js';
 import { turmas } from '../services/turmas.js';
 import { usuarios } from '../services/usuarios.js';
+import { aluno } from '../services/aluno.js';
 import { statCard, reservaBadge, callout, skeletonStats, skeletonRows } from '../components/common.js';
 
 const reservaRow = (r) => html`
@@ -191,21 +192,51 @@ async function admin(root) {
 
 /* ===================== Discente ===================== */
 async function discente(root) {
-  render(root, html`<div class="page">${skeletonStats(3)}</div>`);
-  const labs = await laboratorios.listarComResumo();
+  render(root, html`<div class="page">${skeletonStats(3)}<div class="mt-20">${skeletonRows(1)}</div></div>`);
+  const [labs, proxima] = await Promise.all([
+    laboratorios.listarComResumo(),
+    aluno.proximaAula().catch(() => null),
+  ]);
   const ativos = labs.reduce((s, l) => s + l.ativos, 0);
   const manut = labs.reduce((s, l) => s + l.manutencao, 0);
+
+  const painelProximaAula = proxima
+    ? html`
+      <div class="card card-pad mt-20">
+        <div class="row between start">
+          <div>
+            <h2 class="card-title">Sua próxima aula</h2>
+            <div class="mt-12"><span class="badge badge-success dot">Confirmada</span></div>
+          </div>
+          <span class="text-xs subtle">${fmtRelativeDay(proxima.data)}</span>
+        </div>
+        <div class="mt-20"><p class="kv-label">Disciplina</p><p class="text-lg fw-700 mt-4">${proxima.disciplina}</p></div>
+        <div class="kv-grid mt-20">
+          <div><p class="kv-label">Turma</p><p class="kv-value">${proxima.turma}</p></div>
+          <div><p class="kv-label">Professor(a)</p><p class="kv-value">${proxima.docenteNome}</p></div>
+          <div><p class="kv-label">Horário</p><p class="kv-value">${fmtTime(proxima.horaInicio)} — ${fmtTime(proxima.horaFim)}</p></div>
+          <div><p class="kv-label">Laboratório</p><p class="kv-value">${proxima.laboratorioNome}</p></div>
+        </div>
+        <hr class="divider">
+        <div class="row between wrap" style="gap:12px">
+          <div><p class="kv-label">Seu computador</p><p class="text-lg fw-700 mt-4" style="color:var(--primary)">${icon('monitor')} ${proxima.maquinaIdentificador}</p></div>
+          <a class="btn btn-secondary" href="#/laboratorios">${icon('mapPin')} Ver laboratório</a>
+        </div>
+      </div>`
+    : html`
+      <div class="mt-20">${callout({ tone: 'info', iconName: 'calendar', title: 'Você não tem aula agendada', text: 'Quando seu professor reservar um laboratório e alocar você em uma máquina, os detalhes aparecerão aqui.' })}</div>`;
+
   render(root, html`
     <div class="page">
       <div class="page-header" style="margin-top:0">
-        <div><h1 class="page-title">Olá, ${firstName(session.user.nome)}!</h1><p class="page-subtitle">Consulte os laboratórios e a disponibilidade das máquinas.</p></div>
+        <div><h1 class="page-title">Olá, ${firstName(session.user.nome)}!</h1><p class="page-subtitle">Veja sua próxima aula e consulte os laboratórios.</p></div>
       </div>
       <div class="grid grid-3">
-        ${statCard({ label: 'Laboratórios', value: String(labs.length).padStart(2, '0'), hint: 'Cadastrados', tone: 'primary' })}
+        ${statCard({ label: 'Próxima aula', value: proxima ? proxima.laboratorioNome.replace(/^Laborat[óo]rio\s*/i, 'Lab ') : '—', hint: proxima ? `${fmtRelativeDay(proxima.data, { withDate: false })} — ${fmtTime(proxima.horaInicio)}` : 'Nenhuma agendada', tone: 'primary' })}
         ${statCard({ label: 'Computadores disponíveis', value: String(ativos).padStart(2, '0'), hint: 'Ativos agora', tone: 'success' })}
         ${statCard({ label: 'Em manutenção', value: String(manut).padStart(2, '0'), hint: 'Temporariamente indisponíveis', tone: manut ? 'warning' : '' })}
       </div>
-      <div class="mt-20">${callout({ tone: 'info', title: 'Como funcionam as reservas?', text: 'As reservas de laboratório são feitas pelos docentes para cada turma. No dia da aula, seu professor indicará a estação em que você ficará.' })}</div>
+      ${painelProximaAula}
       <div class="card mt-20">
         <div class="card-header"><h2 class="card-title">Laboratórios</h2><a class="btn btn-link" href="#/laboratorios">Ver todos ${icon('arrowRight')}</a></div>
         ${labs.length ? labs.map((l) => html`
