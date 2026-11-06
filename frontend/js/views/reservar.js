@@ -103,18 +103,24 @@ export default async function reservar(ctx) {
           <div data-overlap class="mt-20"></div>
           <div class="row between mt-24" style="padding-top:20px;border-top:1px solid var(--border)">
             <a class="btn btn-back" href="#/app">${icon('arrowLeft')} Cancelar</a>
-            <button class="btn btn-primary" type="submit" style="height:40px;padding:0 24px">Continuar ${icon('arrowRight')}</button>
+            <button class="btn btn-primary" type="submit" data-continuar style="height:40px;padding:0 24px">Continuar ${icon('arrowRight')}</button>
           </div>
         </form>
       </div>`);
 
     const form = $('[data-form]', root);
-    const checkOverlap = () => {
+    // Conflito de agenda do próprio docente: bloqueia o avanço (não dá só aviso).
+    const choquesDoc = () => {
       const d = formData(form);
-      const choques = minhas.filter((r) => d.horaFim > d.horaInicio && conflita(r, d.data, d.horaInicio, d.horaFim));
+      return minhas.filter((r) => d.horaFim > d.horaInicio && conflita(r, d.data, d.horaInicio, d.horaFim));
+    };
+    const checkOverlap = () => {
+      const choques = choquesDoc();
+      const btn = $('[data-continuar]', root);
+      if (btn) btn.disabled = choques.length > 0;
       render($('[data-overlap]', root), choques.length ? callout({
-        tone: 'warning', title: 'Você já possui aula neste horário',
-        text: choques.map((r) => `${r.disciplina} · ${r.laboratorioNome} (${fmtRange(r.horaInicio, r.horaFim)})`).join(' | '),
+        tone: 'danger', iconName: 'alertCircle', title: 'Você já tem aula nesse horário',
+        text: html`Não é possível reservar: você já possui ${choques.map((r) => `${r.disciplina} · ${r.laboratorioNome} (${fmtRange(r.horaInicio, r.horaFim)})`).join(' | ')}. Escolha outro horário ou dia.`,
       }) : '');
     };
     form.addEventListener('input', checkOverlap);
@@ -141,6 +147,8 @@ export default async function reservar(ctx) {
         if (minutesOf(d.horaInicio) <= now.getHours() * 60 + now.getMinutes()) errors.horaInicio = 'Este horário já passou.';
       }
       if (showFieldErrors(form, errors)) return;
+      // Bloqueia o avanço se o docente já tem aula nesse horário (mesmo dia e sobreposição).
+      if (choquesDoc().length) { checkOverlap(); return; }
       const mudou = d.data !== draft.data || d.horaInicio !== draft.horaInicio || d.horaFim !== draft.horaFim;
       Object.assign(draft, d, { step: 2 });
       if (mudou) draft.conflitos = [];
