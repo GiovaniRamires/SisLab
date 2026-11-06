@@ -25,4 +25,20 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
                            @Param("inicio") LocalTime inicio,
                            @Param("fim") LocalTime fim,
                            @Param("status") StatusReserva status);
+
+
+    @Query("""
+            select count(r) > 0 from Reserva r
+            where r.turma.id = :turmaId
+              and r.data = :data
+              and r.status = :status
+              and r.horaInicio < :fim
+              and r.horaFim > :inicio
+            """)
+    boolean turmaEmConflito(@Param("turmaId") Long turmaId,
+                            @Param("data") LocalDate data,
+                            @Param("inicio") LocalTime inicio,
+                            @Param("fim") LocalTime fim,
+                            @Param("status") StatusReserva status);
+
 }

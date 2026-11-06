@@ -12,6 +12,8 @@ public interface AlocacaoRepository extends JpaRepository<Alocacao, Long> {
 
     List<Alocacao> findByReservaId(Long reservaId);
 
+    List<Alocacao> findByAlunoId(Long alunoId);
+
     boolean existsByReservaIdAndAlunoId(Long reservaId, Long alunoId);
 
     boolean existsByReservaIdAndMaquinaId(Long reservaId, Long maquinaId);
@@ -26,4 +28,5 @@ public interface AlocacaoRepository extends JpaRepository<Alocacao, Long> {
             """)
     long contarMaquinasPorStatus(@Param("laboratorioId") Long laboratorioId,
                                  @Param("status") Computador.StatusComputador status);
+
 }
