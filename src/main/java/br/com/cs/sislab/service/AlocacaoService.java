@@ -27,52 +27,19 @@ public class AlocacaoService {
     }
 
     public Alocacao alocar(Long idUsuario, Long reservaId, Long alunoId, Long maquinaId) {
-        // buscarPorId já garante que o usuário é ADM ou o docente dono (senão 403/404).
         Reserva reserva = reservaService.buscarPorId(idUsuario, reservaId);
+        exigirGestor(idUsuario, reserva);
 
-        // (1) Só o docente dono da reserva pode alocar. ADM é barrado aqui.
-        if (!idUsuario.equals(reserva.getDocente().getId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Apenas o docente dono da reserva pode alocar alunos");
-        }
+        Usuario aluno = validarAlunoDaTurma(reserva, alunoId);
+        Computador maquina = validarMaquinaAtivaDoLaboratorio(reserva, maquinaId);
 
-        // (2) Aluno pertence à turma da reserva.
-        Usuario aluno = usuarioService.buscarPorId(alunoId);
-        if (!reserva.getTurma().possuiAluno(aluno)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "O aluno não pertence à turma desta reserva");
-        }
-
-        // (3) Máquina pertence ao laboratório da reserva.
-        Computador maquina = computadorService.buscarPorId(maquinaId);
-        if (maquina.getLaboratorio() == null
-                || !maquina.getLaboratorio().getId().equals(reserva.getLaboratorio().getId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "A máquina não pertence ao laboratório desta reserva");
-        }
-
-        // (4) Máquina está ATIVA (RN03).
-        if (maquina.getStatus() != Computador.StatusComputador.ATIVO) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "A máquina não está ativa");
-        }
-
-        // (5) Máquina ainda livre nesta reserva.
         if (alocacaoRepository.existsByReservaIdAndMaquinaId(reservaId, maquinaId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "A máquina já está ocupada nesta reserva");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "A máquina já está ocupada nesta reserva");
         }
-
-        // (6) Aluno ainda sem posto nesta reserva.
         if (alocacaoRepository.existsByReservaIdAndAlunoId(reservaId, alunoId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "O aluno já possui um posto nesta reserva");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "O aluno já possui um posto nesta reserva");
         }
-
-        // (7) Total alocado menor que o número de máquinas ativas (RN02).
-        long maquinasAtivas = alocacaoRepository.contarMaquinasPorStatus(
-                reserva.getLaboratorio().getId(), Computador.StatusComputador.ATIVO);
-        if (alocacaoRepository.countByReservaId(reservaId) >= maquinasAtivas) {
+        if (alocacaoRepository.countByReservaId(reservaId) >= maquinasAtivas(reserva)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Não há máquinas ativas suficientes para alocar mais alunos");
         }
@@ -80,9 +47,76 @@ public class AlocacaoService {
         return alocacaoRepository.save(new Alocacao(reserva, aluno, maquina));
     }
 
+    // Realoca um aluno já alocado para outra máquina (ex.: o computador atual quebrou).
+    public Alocacao mover(Long idUsuario, Long reservaId, Long alunoId, Long novaMaquinaId) {
+        Reserva reserva = reservaService.buscarPorId(idUsuario, reservaId);
+        exigirGestor(idUsuario, reserva);
+
+        Alocacao alocacao = alocacaoRepository.findByReservaIdAndAlunoId(reservaId, alunoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "O aluno não está alocado nesta reserva"));
+
+        Computador destino = validarMaquinaAtivaDoLaboratorio(reserva, novaMaquinaId);
+        if (destino.getId().equals(alocacao.getMaquina().getId())) {
+            return alocacao; // já está nesta máquina
+        }
+        if (alocacaoRepository.existsByReservaIdAndMaquinaId(reservaId, novaMaquinaId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "A máquina de destino já está ocupada nesta reserva");
+        }
+
+        alocacao.setMaquina(destino);
+        return alocacaoRepository.save(alocacao);
+    }
+
+    // Remove a alocação de um aluno (libera a estação).
+    public void desalocar(Long idUsuario, Long reservaId, Long alunoId) {
+        Reserva reserva = reservaService.buscarPorId(idUsuario, reservaId);
+        exigirGestor(idUsuario, reserva);
+
+        Alocacao alocacao = alocacaoRepository.findByReservaIdAndAlunoId(reservaId, alunoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "O aluno não está alocado nesta reserva"));
+        alocacaoRepository.delete(alocacao);
+    }
+
     public List<Alocacao> listarPorReserva(Long idUsuario, Long reservaId) {
         // Reaproveita a regra de acesso da reserva: ADM ou docente dono podem consultar.
         reservaService.buscarPorId(idUsuario, reservaId);
         return alocacaoRepository.findByReservaId(reservaId);
+    }
+
+    // Pode alocar/realocar: o ADMINISTRADOR ou o docente dono da reserva.
+    private void exigirGestor(Long idUsuario, Reserva reserva) {
+        boolean admin = usuarioService.buscarPorId(idUsuario).getPerfil() == Usuario.Perfil.ADMINISTRADOR;
+        boolean dono = idUsuario.equals(reserva.getDocente().getId());
+        if (!admin && !dono) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Apenas o docente dono da reserva ou um administrador podem alocar alunos");
+        }
+    }
+
+    private Usuario validarAlunoDaTurma(Reserva reserva, Long alunoId) {
+        Usuario aluno = usuarioService.buscarPorId(alunoId);
+        if (!reserva.getTurma().possuiAluno(aluno)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O aluno não pertence à turma desta reserva");
+        }
+        return aluno;
+    }
+
+    private Computador validarMaquinaAtivaDoLaboratorio(Reserva reserva, Long maquinaId) {
+        Computador maquina = computadorService.buscarPorId(maquinaId);
+        if (maquina.getLaboratorio() == null
+                || !maquina.getLaboratorio().getId().equals(reserva.getLaboratorio().getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A máquina não pertence ao laboratório desta reserva");
+        }
+        if (maquina.getStatus() != Computador.StatusComputador.ATIVO) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "A máquina não está ativa");
+        }
+        return maquina;
+    }
+
+    private long maquinasAtivas(Reserva reserva) {
+        return alocacaoRepository.contarMaquinasPorStatus(
+                reserva.getLaboratorio().getId(), Computador.StatusComputador.ATIVO);
     }
 }

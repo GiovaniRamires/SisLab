@@ -133,6 +133,22 @@ public class ReservaServiceTest {
         verify(reservaRepository, never()).save(any());
     }
 
+    @Test
+    public void deveRetornar409QuandoDocenteJaTemReservaNoHorario() {
+        when(usuarioService.buscarPorId(1L)).thenReturn(docente);
+        when(turmaService.buscarPorId(10L)).thenReturn(turma);
+        when(laboratorioService.buscarPorId(20L)).thenReturn(lab);
+        when(reservaRepository.existeConflito(20L, amanha, oito, dez, StatusReserva.CONFIRMADA)).thenReturn(false);
+        when(reservaRepository.turmaEmConflito(10L, amanha, oito, dez, StatusReserva.CONFIRMADA)).thenReturn(false);
+        when(reservaRepository.docenteEmConflito(1L, amanha, oito, dez, StatusReserva.CONFIRMADA)).thenReturn(true);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> reservaService.criar(1L, 20L, 10L, amanha, oito, dez, null));
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        verify(reservaRepository, never()).save(any());
+    }
+
     private Reserva reservaSalva() {
         Reserva r = new Reserva(lab, turma, amanha, oito, dez, null);
         r.setId(5L);

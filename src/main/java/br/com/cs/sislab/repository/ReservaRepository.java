@@ -41,4 +41,20 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
                             @Param("fim") LocalTime fim,
                             @Param("status") StatusReserva status);
 
+    // Um docente não pode ter duas reservas sobrepostas (não pode dar duas aulas ao mesmo tempo),
+    // mesmo em laboratorios ou turmas diferentes. O docente da reserva vem da turma.
+    @Query("""
+            select count(r) > 0 from Reserva r
+            where r.turma.docente.id = :docenteId
+              and r.data = :data
+              and r.status = :status
+              and r.horaInicio < :fim
+              and r.horaFim > :inicio
+            """)
+    boolean docenteEmConflito(@Param("docenteId") Long docenteId,
+                              @Param("data") LocalDate data,
+                              @Param("inicio") LocalTime inicio,
+                              @Param("fim") LocalTime fim,
+                              @Param("status") StatusReserva status);
+
 }
