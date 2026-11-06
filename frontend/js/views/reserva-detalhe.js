@@ -2,9 +2,9 @@
 import { html, render, on, $ } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { session } from '../core/session.js';
-import { toast, showError, confirmDialog, loadingBlock, errorState } from '../core/ui.js';
+import { toast, showError, confirmDialog, openModal, loadingBlock, errorState } from '../core/ui.js';
 import { fmtDate, fmtRange, fmtRelativeDay, naturalCompare, plural } from '../core/format.js';
-import { reservas, alocacoes, situacao } from '../services/reservas.js';
+import { reservas, alocacoes, alocacoesAcoes, situacao } from '../services/reservas.js';
 import { computadores, PC_STATUS } from '../services/laboratorios.js';
 import { turmas } from '../services/turmas.js';
 import { invalidate } from '../services/cache.js';
@@ -19,7 +19,8 @@ export default async function reservaDetalhe(ctx) {
   let busy = false;
 
   const isDono = () => session.isDocente && reserva && String(reserva.docenteId) === String(session.user.id);
-  const podeAlocar = () => isDono() && situacao(reserva) !== 'CANCELADA';
+  // Admin e docente dono podem alocar/realocar (desde que a reserva não esteja cancelada/encerrada).
+  const podeAlocar = () => reserva && (session.isAdmin || isDono()) && ['AGENDADA', 'EM_ANDAMENTO'].includes(situacao(reserva));
   const podeCancelar = () => reserva && (session.isAdmin || isDono()) && situacao(reserva) === 'AGENDADA';
 
   async function load() {
@@ -47,7 +48,12 @@ export default async function reservaDetalhe(ctx) {
 
   function pcState(pc, porPc) {
     const a = porPc.get(pc.id);
-    if (a) return { cls: 'allocated', sub: a.alunoNome.split(' ')[0], title: `${pc.identificador} — ${a.alunoNome}` };
+    if (a) {
+      // PC ocupado: quem pode alocar também pode clicar para realocar/desalocar o aluno.
+      const gerencia = podeAlocar();
+      return { cls: 'allocated', sub: a.alunoNome.split(' ')[0], clickable: gerencia, dataPc: pc.id,
+        title: gerencia ? `${a.alunoNome} — clique para realocar ou liberar` : `${pc.identificador} — ${a.alunoNome}` };
+    }
     if (pc.status !== 'ATIVO') return { cls: PC_STATUS[pc.status].cls, sub: PC_STATUS[pc.status].map };
     const clickable = podeAlocar() && modo === 'manual' && !!selAluno;
     return { cls: '', sub: 'Disponível', clickable, pulse: clickable, title: clickable ? `Alocar ${selAluno.nome} em ${pc.identificador}` : pc.identificador };
@@ -85,8 +91,8 @@ export default async function reservaDetalhe(ctx) {
           <div><p class="kv-label">Estações disp.</p><p class="kv-value">${livres.length}/${pcs.length}</p></div>
         </div>
 
-        ${session.isAdmin ? html`<div class="mt-16">${callout({ tone: 'info', title: 'Visualização administrativa', text: 'Apenas o docente responsável pela reserva pode alocar os alunos.' })}</div>`
-          : sit === 'ENCERRADA' ? html`<div class="mt-16">${callout({ tone: 'neutral', iconName: 'clock', title: 'Aula já realizada', text: 'Esta reserva já foi encerrada; a alocação é exibida para consulta.' })}</div>` : ''}
+        ${sit === 'ENCERRADA' ? html`<div class="mt-16">${callout({ tone: 'neutral', iconName: 'clock', title: 'Aula já realizada', text: 'Esta reserva já foi encerrada; a alocação é exibida para consulta.' })}</div>`
+          : podeAlocar() ? html`<div class="mt-16">${callout({ tone: 'info', iconName: 'hand', title: 'Alocação de alunos', text: 'Clique em um aluno pendente e depois numa estação livre. Para realocar ou liberar, clique em uma estação ocupada.' })}</div>` : ''}
 
         <div class="grid grid-main-aside mt-20" style="align-items:start">
           <div>
@@ -147,6 +153,48 @@ export default async function reservaDetalhe(ctx) {
     }
   }
 
+  // Menu de uma estação ocupada: realocar para outra máquina livre ou liberar o aluno.
+  function gerenciarOcupado(pc, ocupante) {
+    const porPc = alocadoPorPc();
+    const livres = pcs.filter((p) => p.status === 'ATIVO' && !porPc.has(p.id));
+    const m = openModal({
+      title: `${pc.identificador} — ${ocupante.alunoNome}`,
+      description: 'Realoque o aluno para outra estação (ex.: este computador quebrou) ou libere a vaga.',
+      iconName: 'monitor',
+      content: html`
+        <div class="field">
+          <label class="label" for="destino">Realocar para</label>
+          <select class="select" id="destino" ${livres.length ? '' : 'disabled'}>
+            ${livres.length ? livres.map((p) => html`<option value="${p.id}">${p.identificador}</option>`) : html`<option>Nenhuma estação livre</option>`}
+          </select>
+          ${livres.length ? '' : html`<p class="hint">Não há estações ativas livres neste laboratório.</p>`}
+        </div>`,
+      footer: html`
+        <button class="btn btn-danger-soft" data-liberar style="margin-right:auto">${icon('x')} Liberar vaga</button>
+        <button class="btn btn-secondary" data-close>Fechar</button>
+        <button class="btn btn-primary" data-mover ${livres.length ? '' : 'disabled'}>${icon('shuffle')} Realocar</button>`,
+    });
+    m.el.querySelector('[data-mover]')?.addEventListener('click', async () => {
+      const destinoId = m.el.querySelector('#destino').value;
+      try {
+        await alocacoesAcoes.mover(id, ocupante.alunoId, destinoId);
+        m.close();
+        toast.success(`${ocupante.alunoNome} foi realocado(a).`, { title: 'Aluno realocado' });
+        await refreshAloc();
+      } catch (err) { showError(err, 'Não foi possível realocar'); }
+    });
+    m.el.querySelector('[data-liberar]').addEventListener('click', async () => {
+      m.close();
+      const ok = await confirmDialog({ title: `Liberar a vaga de ${ocupante.alunoNome}?`, message: 'O aluno ficará sem estação nesta reserva.', confirmLabel: 'Liberar', danger: true });
+      if (!ok) return;
+      try {
+        await alocacoesAcoes.desalocar(id, ocupante.alunoId);
+        toast.success(`${ocupante.alunoNome} foi desalocado(a).`, { title: 'Vaga liberada' });
+        await refreshAloc();
+      } catch (err) { showError(err, 'Não foi possível liberar a vaga'); }
+    });
+  }
+
   on(root, 'click', '[data-action=retry]', load);
   on(root, 'click', '[data-action=manual]', () => { modo = 'manual'; paint(); });
   on(root, 'click', '[data-action=cancelar]', async () => {
@@ -172,7 +220,13 @@ export default async function reservaDetalhe(ctx) {
   });
   on(root, 'click', '[data-pc]', (e, el) => {
     const pc = pcs.find((p) => String(p.id) === el.dataset.pc);
-    if (selAluno && pc) alocar(selAluno, pc);
+    if (!pc) return;
+    const ocupante = alocadoPorPc().get(pc.id);
+    if (ocupante) {
+      if (podeAlocar()) gerenciarOcupado(pc, ocupante);
+      return;
+    }
+    if (selAluno) alocar(selAluno, pc);
   });
   on(root, 'click', '[data-action=auto]', async (e, btn) => {
     const porPc = alocadoPorPc();
