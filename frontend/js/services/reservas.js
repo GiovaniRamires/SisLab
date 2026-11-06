@@ -44,6 +44,17 @@ export const reservas = {
   async proximas() {
     return (await this.listar()).filter((r) => ['AGENDADA', 'EM_ANDAMENTO'].includes(situacao(r)));
   },
+  /** Edita a reserva (PUT /reserva/{id}). */
+  async atualizar(id, { laboratorioId, turmaId, data, horaInicio, horaFim, justificativa }) {
+    const r = await api.put(`/reserva/${id}`, {
+      laboratorioId: Number(laboratorioId),
+      turmaId: Number(turmaId),
+      data, horaInicio, horaFim,
+      justificativa: justificativa || null,
+    });
+    invalidate('reservas');
+    return r;
+  },
   /** Cancela a reserva (DELETE /reserva/{id}). O backend marca como CANCELADA. */
   async cancelar(id) {
     await api.del(`/reserva/${id}`);

@@ -1,11 +1,11 @@
 // Detalhe da reserva + Mapa e alocação de alunos nas estações.
-import { html, render, on, $ } from '../core/dom.js';
+import { html, render, on, $, showFieldErrors } from '../core/dom.js';
 import { icon } from '../core/icons.js';
 import { session } from '../core/session.js';
-import { toast, showError, confirmDialog, openModal, loadingBlock, errorState } from '../core/ui.js';
-import { fmtDate, fmtRange, fmtRelativeDay, naturalCompare, plural } from '../core/format.js';
+import { toast, showError, confirmDialog, openModal, formModal, loadingBlock, errorState } from '../core/ui.js';
+import { fmtDate, fmtRange, fmtRelativeDay, naturalCompare, plural, toISODate } from '../core/format.js';
 import { reservas, alocacoes, alocacoesAcoes, situacao } from '../services/reservas.js';
-import { computadores, PC_STATUS } from '../services/laboratorios.js';
+import { computadores, laboratorios, PC_STATUS } from '../services/laboratorios.js';
 import { turmas } from '../services/turmas.js';
 import { invalidate } from '../services/cache.js';
 import { pageHeader, reservaBadge, callout, labMap, stepper } from '../components/common.js';
@@ -22,6 +22,7 @@ export default async function reservaDetalhe(ctx) {
   // Admin e docente dono podem alocar/realocar (desde que a reserva não esteja cancelada/encerrada).
   const podeAlocar = () => reserva && (session.isAdmin || isDono()) && ['AGENDADA', 'EM_ANDAMENTO'].includes(situacao(reserva));
   const podeCancelar = () => reserva && (session.isAdmin || isDono()) && situacao(reserva) === 'AGENDADA';
+  const podeEditar = () => reserva && (session.isAdmin || isDono()) && situacao(reserva) === 'AGENDADA';
 
   async function load() {
     render(root, html`<div class="page">${loadingBlock('Carregando reserva...')}</div>`);
@@ -77,7 +78,7 @@ export default async function reservaDetalhe(ctx) {
           title: html`${reserva.laboratorioNome} — Alocação de alunos`,
           subtitle: html`${reserva.disciplina} · ${fmtRelativeDay(reserva.data)} · ${fmtRange(reserva.horaInicio, reserva.horaFim)}`,
           back: { href: '/reservas', label: session.isAdmin ? 'Reservas' : 'Minhas reservas' },
-          actions: html`${reservaBadge(reserva)}<span class="badge badge-neutral mono">#${reserva.id}</span>${podeCancelar() ? html`<button class="btn btn-danger-soft" data-action="cancelar">${icon('x')} Cancelar reserva</button>` : ''}`,
+          actions: html`${reservaBadge(reserva)}<span class="badge badge-neutral mono">#${reserva.id}</span>${podeEditar() ? html`<button class="btn btn-secondary" data-action="editar">${icon('edit')} Editar</button>` : ''}${podeCancelar() ? html`<button class="btn btn-danger-soft" data-action="cancelar">${icon('x')} Cancelar reserva</button>` : ''}`,
         })}
         ${sit === 'CANCELADA' ? html`<div class="mt-16">${callout({ tone: 'danger', iconName: 'x', title: 'Reserva cancelada', text: 'Esta reserva foi cancelada e o horário do laboratório foi liberado.' })}</div>` : ''}
         ${nova ? html`<div class="mb-16">${stepper(['Data e horário', 'Escolher laboratório', 'Mapa e alocação'], 3)}</div>` : ''}
@@ -197,6 +198,54 @@ export default async function reservaDetalhe(ctx) {
 
   on(root, 'click', '[data-action=retry]', load);
   on(root, 'click', '[data-action=manual]', () => { modo = 'manual'; paint(); });
+  on(root, 'click', '[data-action=editar]', async () => {
+    let labs = [];
+    try { labs = await laboratorios.listar(); } catch (err) { return showError(err, 'Não foi possível carregar os laboratórios'); }
+    const r = await formModal({
+      title: 'Editar reserva',
+      description: `${reserva.disciplina} · ${reserva.turmaNome}`,
+      iconName: 'edit',
+      submitLabel: 'Salvar alterações',
+      fields: html`
+        <div class="form-grid">
+          <div class="field">
+            <label class="label" for="data">Data</label>
+            <input class="input" type="date" id="data" name="data" value="${reserva.data}" min="${toISODate()}" required>
+            <div class="field-error"></div>
+          </div>
+          <div class="field">
+            <label class="label" for="laboratorioId">Laboratório</label>
+            <select class="select" id="laboratorioId" name="laboratorioId" required>
+              ${labs.map((l) => html`<option value="${l.id}" ${String(l.id) === String(reserva.laboratorioId) ? 'selected' : ''}>${l.nome} — ${l.bloco}</option>`)}
+            </select>
+            <div class="field-error"></div>
+          </div>
+          <div class="field">
+            <label class="label" for="horaInicio">Horário inicial</label>
+            <input class="input" type="time" id="horaInicio" name="horaInicio" value="${(reserva.horaInicio || '').slice(0, 5)}" step="300" required>
+            <div class="field-error"></div>
+          </div>
+          <div class="field">
+            <label class="label" for="horaFim">Horário final</label>
+            <input class="input" type="time" id="horaFim" name="horaFim" value="${(reserva.horaFim || '').slice(0, 5)}" step="300" required>
+            <div class="field-error"></div>
+          </div>
+          <div class="field span-2">
+            <label class="label" for="justificativa">Justificativa</label>
+            <textarea class="textarea" id="justificativa" name="justificativa" maxlength="255" rows="3">${reserva.justificativa || ''}</textarea>
+          </div>
+        </div>`,
+      onSubmit: async (d, form) => {
+        if (d.horaFim <= d.horaInicio) { showFieldErrors(form, { horaFim: 'Deve ser posterior ao horário inicial.' }); return false; }
+        if (d.data < toISODate()) { showFieldErrors(form, { data: 'Não é possível reservar em data passada.' }); return false; }
+        return reservas.atualizar(id, { ...d, turmaId: reserva.turmaId });
+      },
+    });
+    if (r && r !== true) {
+      toast.success('A reserva foi atualizada.', { title: 'Reserva editada' });
+      await load();
+    }
+  });
   on(root, 'click', '[data-action=cancelar]', async () => {
     const ok = await confirmDialog({
       title: 'Cancelar esta reserva?',
