@@ -19,11 +19,13 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
     List<Reserva> findAllByOrderByDataAscHoraInicioAsc();
 
     // RN01: dois intervalos se sobrepõem quando cada um começa antes de o outro terminar.
+    // :ignorarId permite reaproveitar a checagem na edição (passe a própria reserva); use -1 na criação.
     @Query("""
             select count(r) > 0 from Reserva r
             where r.laboratorio.id = :laboratorioId
               and r.data = :data
               and r.status = :status
+              and r.id <> :ignorarId
               and r.horaInicio < :fim
               and r.horaFim > :inicio
             """)
@@ -31,14 +33,15 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
                            @Param("data") LocalDate data,
                            @Param("inicio") LocalTime inicio,
                            @Param("fim") LocalTime fim,
-                           @Param("status") StatusReserva status);
-
+                           @Param("status") StatusReserva status,
+                           @Param("ignorarId") Long ignorarId);
 
     @Query("""
             select count(r) > 0 from Reserva r
             where r.turma.id = :turmaId
               and r.data = :data
               and r.status = :status
+              and r.id <> :ignorarId
               and r.horaInicio < :fim
               and r.horaFim > :inicio
             """)
@@ -46,7 +49,8 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
                             @Param("data") LocalDate data,
                             @Param("inicio") LocalTime inicio,
                             @Param("fim") LocalTime fim,
-                            @Param("status") StatusReserva status);
+                            @Param("status") StatusReserva status,
+                            @Param("ignorarId") Long ignorarId);
 
     // Um docente não pode ter duas reservas sobrepostas (não pode dar duas aulas ao mesmo tempo),
     // mesmo em laboratorios ou turmas diferentes. O docente da reserva vem da turma.
@@ -55,6 +59,7 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
             where r.turma.docente.id = :docenteId
               and r.data = :data
               and r.status = :status
+              and r.id <> :ignorarId
               and r.horaInicio < :fim
               and r.horaFim > :inicio
             """)
@@ -62,6 +67,7 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
                               @Param("data") LocalDate data,
                               @Param("inicio") LocalTime inicio,
                               @Param("fim") LocalTime fim,
-                              @Param("status") StatusReserva status);
+                              @Param("status") StatusReserva status,
+                              @Param("ignorarId") Long ignorarId);
 
 }
