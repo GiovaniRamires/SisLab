@@ -1,40 +1,7 @@
 // Endpoints: /reserva e /reserva/{id}/alocacoes
-import { api, ApiError } from '../core/api.js';
+import { api } from '../core/api.js';
 import { cached, invalidate } from './cache.js';
 import { toDateTime } from '../core/format.js';
-
-/*
- * O backend ainda não expõe uma listagem (GET /reserva). Para montar "Minhas reservas",
- * a grade e o dashboard, o front percorre os IDs sequenciais via GET /reserva/{id}:
- *   200 -> reserva visível ao usuário | 403 -> existe, mas é de outro docente | 404 -> não existe
- * A varredura para após MAX_MISSES IDs inexistentes consecutivos. Quando o endpoint de
- * listagem existir, basta trocar a implementação de `listar()`.
- */
-const BATCH = 10;
-const MAX_MISSES = 10;
-const MAX_ID = 10_000;
-
-async function varrerReservas() {
-  const encontradas = [];
-  let id = 1;
-  let misses = 0;
-  while (misses < MAX_MISSES && id < MAX_ID) {
-    const ids = Array.from({ length: BATCH }, (_, i) => id + i);
-    id += BATCH;
-    const results = await Promise.all(ids.map((i) => api.get(`/reserva/${i}`).then(
-      (data) => ({ data }),
-      (error) => ({ error }),
-    )));
-    for (const r of results) {
-      if (r.data) { encontradas.push(r.data); misses = 0; }
-      else if (r.error instanceof ApiError && r.error.status === 403) misses = 0;
-      else if (r.error instanceof ApiError && r.error.status === 404) misses++;
-      else throw r.error;
-      if (misses >= MAX_MISSES) break;
-    }
-  }
-  return encontradas;
-}
 
 /** Situação temporal da reserva: futura, em andamento ou encerrada. */
 export function situacao(r, now = new Date()) {
@@ -56,8 +23,9 @@ export const SITUACAO = {
 export const ordenarPorInicio = (a, b) => toDateTime(a.data, a.horaInicio) - toDateTime(b.data, b.horaInicio);
 
 export const reservas = {
+  // GET /reserva — o backend filtra por perfil (admin: todas; docente: as suas).
   listar() {
-    return cached('reservas', async () => (await varrerReservas()).sort(ordenarPorInicio));
+    return cached('reservas', async () => ((await api.get('/reserva')) || []).sort(ordenarPorInicio));
   },
   buscar(id) {
     return api.get(`/reserva/${id}`);
