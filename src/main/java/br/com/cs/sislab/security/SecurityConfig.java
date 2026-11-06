@@ -45,12 +45,14 @@ public class SecurityConfig {
                         // Editar: o próprio usuário ou um ADMINISTRADOR (o controller valida); excluir: só ADMINISTRADOR
                         .requestMatchers(HttpMethod.PUT, "/usuario/*").authenticated()
                         .requestMatchers("/usuario/**").hasRole("ADMINISTRADOR")
-                        // As regras finas por perfil/dono continuam nos services
-                        // Editar/cancelar reserva: exige login; o service valida se é ADMINISTRADOR ou o docente dono
-                        .requestMatchers(HttpMethod.PUT, "/reserva/*").authenticated()
-                        .requestMatchers(HttpMethod.DELETE, "/reserva/*").authenticated()
-                        // Painel do discente
+                        // Painel do discente: o discente acessa o sistema apenas por aqui
+                        // (suas reservas futuras e o mapa dos laboratórios onde tem aula).
                         .requestMatchers("/aluno/**").hasAnyRole("DISCENTE", "DOCENTE", "ADMINISTRADOR")
+                        // Laboratórios e computadores: visíveis a ADMINISTRADOR e DOCENTE.
+                        // O discente NÃO acessa estes endpoints gerais — vê apenas o que é dele via /aluno/**.
+                        .requestMatchers("/laboratorio/**", "/computador/**").hasAnyRole("ADMINISTRADOR", "DOCENTE")
+                        // Reservas e alocações: ADMINISTRADOR e DOCENTE; a regra fina (dono) fica nos services.
+                        .requestMatchers("/reserva/**").hasAnyRole("ADMINISTRADOR", "DOCENTE")
 
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)));

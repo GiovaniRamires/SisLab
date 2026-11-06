@@ -2,6 +2,7 @@ package br.com.cs.sislab.controller;
 
 import br.com.cs.sislab.dto.AlocacaoDTO;
 import br.com.cs.sislab.dto.AlocacaoRespostaDTO;
+import br.com.cs.sislab.dto.MaquinaDestinoDTO;
 import br.com.cs.sislab.service.AlocacaoService;
 import br.com.cs.sislab.security.UsuarioLogado;
 import jakarta.validation.Valid;
@@ -39,5 +40,25 @@ public class AlocacaoController {
                 .map(AlocacaoRespostaDTO::de)
                 .toList();
         return ResponseEntity.ok(alocacoes);
+    }
+
+    // Realoca um aluno já alocado para outra máquina (ex.: o computador anterior quebrou).
+    @PutMapping("/{alunoId}")
+    public ResponseEntity<AlocacaoRespostaDTO> mover(Principal principal,
+                                                     @PathVariable Long reservaId,
+                                                     @PathVariable Long alunoId,
+                                                     @Valid @RequestBody MaquinaDestinoDTO dto) {
+        Long idUsuario = UsuarioLogado.id(principal);
+        var alocacao = alocacaoService.mover(idUsuario, reservaId, alunoId, dto.getMaquinaId());
+        return ResponseEntity.ok(AlocacaoRespostaDTO.de(alocacao));
+    }
+
+    // Remove a alocação de um aluno (libera a estação).
+    @DeleteMapping("/{alunoId}")
+    public ResponseEntity<Void> desalocar(Principal principal,
+                                          @PathVariable Long reservaId,
+                                          @PathVariable Long alunoId) {
+        alocacaoService.desalocar(UsuarioLogado.id(principal), reservaId, alunoId);
+        return ResponseEntity.noContent().build();
     }
 }

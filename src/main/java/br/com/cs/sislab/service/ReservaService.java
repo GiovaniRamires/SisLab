@@ -55,6 +55,10 @@ public class ReservaService {
                     "A turma já possui uma reserva nesse horário");
         }
 
+        if (reservaRepository.docenteEmConflito(idUsuario, data, horaInicio, horaFim, StatusReserva.CONFIRMADA)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Você já possui uma reserva nesse horário");
+        }
 
         return reservaRepository.save(new Reserva(laboratorio, turma, data, horaInicio, horaFim, justificativa));
     }

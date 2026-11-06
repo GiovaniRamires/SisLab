@@ -65,6 +65,7 @@ public class AlocacaoServiceTest {
     @Test
     public void deveAlocarAlunoNaMaquina() {
         when(reservaService.buscarPorId(1L, 5L)).thenReturn(reserva);
+        when(usuarioService.buscarPorId(1L)).thenReturn(docente);
         when(usuarioService.buscarPorId(2L)).thenReturn(aluno);
         when(computadorService.buscarPorId(30L)).thenReturn(maquina);
         when(alocacaoRepository.existsByReservaIdAndMaquinaId(5L, 30L)).thenReturn(false);
@@ -82,10 +83,12 @@ public class AlocacaoServiceTest {
     }
 
     @Test
-    public void naoDonoDaReservaNaoPodeAlocar() {
-        Usuario adm = new Usuario("Adm", "adm@email.com", "9", Usuario.Perfil.ADMINISTRADOR);
-        adm.setId(9L);
-        when(reservaService.buscarPorId(9L, 5L)).thenReturn(reserva); // ADM passa no acesso
+    public void outroDocenteNaoPodeAlocar() {
+        // Um docente que não é dono da reserva (e não é admin) não pode alocar.
+        Usuario outroDocente = new Usuario("Caio", "caio@email.com", "9", Usuario.Perfil.DOCENTE);
+        outroDocente.setId(9L);
+        when(reservaService.buscarPorId(9L, 5L)).thenReturn(reserva); // passou no acesso (consulta), mas não é dono
+        when(usuarioService.buscarPorId(9L)).thenReturn(outroDocente);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> alocacaoService.alocar(9L, 5L, 2L, 30L));
@@ -95,10 +98,32 @@ public class AlocacaoServiceTest {
     }
 
     @Test
+    public void administradorPodeAlocar() {
+        // Nova regra: o ADMINISTRADOR também pode alocar alunos.
+        Usuario adm = new Usuario("Adm", "adm@email.com", "9", Usuario.Perfil.ADMINISTRADOR);
+        adm.setId(9L);
+        when(reservaService.buscarPorId(9L, 5L)).thenReturn(reserva);
+        when(usuarioService.buscarPorId(9L)).thenReturn(adm);
+        when(usuarioService.buscarPorId(2L)).thenReturn(aluno);
+        when(computadorService.buscarPorId(30L)).thenReturn(maquina);
+        when(alocacaoRepository.existsByReservaIdAndMaquinaId(5L, 30L)).thenReturn(false);
+        when(alocacaoRepository.existsByReservaIdAndAlunoId(5L, 2L)).thenReturn(false);
+        when(alocacaoRepository.contarMaquinasPorStatus(20L, Computador.StatusComputador.ATIVO)).thenReturn(2L);
+        when(alocacaoRepository.countByReservaId(5L)).thenReturn(0L);
+        when(alocacaoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Alocacao a = alocacaoService.alocar(9L, 5L, 2L, 30L);
+
+        assertEquals(aluno, a.getAluno());
+        verify(alocacaoRepository).save(any());
+    }
+
+    @Test
     public void alunoForaDaTurmaDeveRetornar400() {
         Usuario forasteiro = new Usuario("Caio", "caio@email.com", "3", Usuario.Perfil.DISCENTE);
         forasteiro.setId(3L);
         when(reservaService.buscarPorId(1L, 5L)).thenReturn(reserva);
+        when(usuarioService.buscarPorId(1L)).thenReturn(docente);
         when(usuarioService.buscarPorId(3L)).thenReturn(forasteiro);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
@@ -116,6 +141,7 @@ public class AlocacaoServiceTest {
         outraMaquina.setId(31L);
 
         when(reservaService.buscarPorId(1L, 5L)).thenReturn(reserva);
+        when(usuarioService.buscarPorId(1L)).thenReturn(docente);
         when(usuarioService.buscarPorId(2L)).thenReturn(aluno);
         when(computadorService.buscarPorId(31L)).thenReturn(outraMaquina);
 
@@ -130,6 +156,7 @@ public class AlocacaoServiceTest {
     public void maquinaEmManutencaoDeveRetornar409() {
         maquina.setStatus(Computador.StatusComputador.EM_MANUTENCAO);
         when(reservaService.buscarPorId(1L, 5L)).thenReturn(reserva);
+        when(usuarioService.buscarPorId(1L)).thenReturn(docente);
         when(usuarioService.buscarPorId(2L)).thenReturn(aluno);
         when(computadorService.buscarPorId(30L)).thenReturn(maquina);
 
@@ -143,6 +170,7 @@ public class AlocacaoServiceTest {
     @Test
     public void maquinaJaOcupadaDeveRetornar409() {
         when(reservaService.buscarPorId(1L, 5L)).thenReturn(reserva);
+        when(usuarioService.buscarPorId(1L)).thenReturn(docente);
         when(usuarioService.buscarPorId(2L)).thenReturn(aluno);
         when(computadorService.buscarPorId(30L)).thenReturn(maquina);
         when(alocacaoRepository.existsByReservaIdAndMaquinaId(5L, 30L)).thenReturn(true);
@@ -157,6 +185,7 @@ public class AlocacaoServiceTest {
     @Test
     public void alunoComPostoDuplicadoDeveRetornar409() {
         when(reservaService.buscarPorId(1L, 5L)).thenReturn(reserva);
+        when(usuarioService.buscarPorId(1L)).thenReturn(docente);
         when(usuarioService.buscarPorId(2L)).thenReturn(aluno);
         when(computadorService.buscarPorId(30L)).thenReturn(maquina);
         when(alocacaoRepository.existsByReservaIdAndMaquinaId(5L, 30L)).thenReturn(false);
@@ -172,6 +201,7 @@ public class AlocacaoServiceTest {
     @Test
     public void excederMaquinasAtivasDeveRetornar409() {
         when(reservaService.buscarPorId(1L, 5L)).thenReturn(reserva);
+        when(usuarioService.buscarPorId(1L)).thenReturn(docente);
         when(usuarioService.buscarPorId(2L)).thenReturn(aluno);
         when(computadorService.buscarPorId(30L)).thenReturn(maquina);
         when(alocacaoRepository.existsByReservaIdAndMaquinaId(5L, 30L)).thenReturn(false);
@@ -184,6 +214,51 @@ public class AlocacaoServiceTest {
 
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
         verify(alocacaoRepository, never()).save(any());
+    }
+
+    @Test
+    public void moverDeveRealocarAlunoParaOutraMaquina() {
+        Computador destino = new Computador("PC-02", Computador.StatusComputador.ATIVO, lab);
+        destino.setId(31L);
+        Alocacao atual = new Alocacao(reserva, aluno, maquina);
+        atual.setId(100L);
+
+        when(reservaService.buscarPorId(1L, 5L)).thenReturn(reserva);
+        when(usuarioService.buscarPorId(1L)).thenReturn(docente);
+        when(alocacaoRepository.findByReservaIdAndAlunoId(5L, 2L)).thenReturn(java.util.Optional.of(atual));
+        when(computadorService.buscarPorId(31L)).thenReturn(destino);
+        when(alocacaoRepository.existsByReservaIdAndMaquinaId(5L, 31L)).thenReturn(false);
+        when(alocacaoRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Alocacao movida = alocacaoService.mover(1L, 5L, 2L, 31L);
+
+        assertEquals(destino, movida.getMaquina());
+        verify(alocacaoRepository).save(atual);
+    }
+
+    @Test
+    public void moverAlunoNaoAlocadoDeveRetornar404() {
+        when(reservaService.buscarPorId(1L, 5L)).thenReturn(reserva);
+        when(usuarioService.buscarPorId(1L)).thenReturn(docente);
+        when(alocacaoRepository.findByReservaIdAndAlunoId(5L, 2L)).thenReturn(java.util.Optional.empty());
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> alocacaoService.mover(1L, 5L, 2L, 31L));
+
+        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+    }
+
+    @Test
+    public void desalocarDeveRemoverAlocacao() {
+        Alocacao atual = new Alocacao(reserva, aluno, maquina);
+        atual.setId(100L);
+        when(reservaService.buscarPorId(1L, 5L)).thenReturn(reserva);
+        when(usuarioService.buscarPorId(1L)).thenReturn(docente);
+        when(alocacaoRepository.findByReservaIdAndAlunoId(5L, 2L)).thenReturn(java.util.Optional.of(atual));
+
+        alocacaoService.desalocar(1L, 5L, 2L);
+
+        verify(alocacaoRepository).delete(atual);
     }
 
     @Test

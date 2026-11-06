@@ -7,12 +7,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface AlocacaoRepository extends JpaRepository<Alocacao, Long> {
 
     List<Alocacao> findByReservaId(Long reservaId);
 
     List<Alocacao> findByAlunoId(Long alunoId);
+
+    Optional<Alocacao> findByReservaIdAndAlunoId(Long reservaId, Long alunoId);
 
     boolean existsByReservaIdAndAlunoId(Long reservaId, Long alunoId);
 
