@@ -8,8 +8,15 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 public interface ReservaRepository extends JpaRepository<Reserva, Long> {
+
+    // Reservas de um docente (o docente da reserva vem da turma).
+    List<Reserva> findByTurmaDocenteIdOrderByDataAscHoraInicioAsc(Long docenteId);
+
+    // Todas as reservas em ordem cronológica (uso do administrador).
+    List<Reserva> findAllByOrderByDataAscHoraInicioAsc();
 
     // RN01: dois intervalos se sobrepõem quando cada um começa antes de o outro terminar.
     @Query("""

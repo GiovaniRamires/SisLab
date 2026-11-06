@@ -29,6 +29,14 @@ public class ReservaController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ReservaRespostaDTO.de(reserva));
     }
 
+    @GetMapping
+    public ResponseEntity<java.util.List<ReservaRespostaDTO>> listar(Principal principal) {
+        var reservas = reservaService.listar(UsuarioLogado.id(principal)).stream()
+                .map(ReservaRespostaDTO::de)
+                .toList();
+        return ResponseEntity.ok(reservas);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ReservaRespostaDTO> buscarPorId(Principal principal,
                                                           @PathVariable Long id) {
